@@ -995,6 +995,26 @@ function updatePlayer(p) {
     }
   }
 
+  // Pickup floating coin tiles
+  {
+    const l = Math.floor(p.x / TILE);
+    const r = Math.floor((p.x + p.w - 0.01) / TILE);
+    const t = Math.floor(p.y / TILE);
+    const b = Math.floor((p.y + p.h - 0.01) / TILE);
+    for (let ty = t; ty <= b; ty++) {
+      for (let tx = l; tx <= r; tx++) {
+        if (getTile(tx, ty) === 'C') {
+          setTile(tx, ty, '.');
+          addScore(100, tx*TILE+8, ty*TILE);
+          game.coins++;
+          if (game.coins >= 100) { game.coins -= 100; gainLife(); SFX.oneup(); }
+          SFX.coin();
+          game.particles.push({ kind:'coinpop', x: tx*TILE+8, y: ty*TILE+8, vy: -4, life: 26 });
+        }
+      }
+    }
+  }
+
   // Touch enemies
   for (const en of game.enemies) {
     if (en.dead) continue;
