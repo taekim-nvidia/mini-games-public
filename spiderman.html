@@ -435,7 +435,8 @@ function buildLevel(){
   buildings.length=0; attachPoints.length=0; enemies.length=0; projectiles.length=0; particles.length=0; hostages.length=0;
   stars.length=0; bgBuildings.length=0;
   // street is from y=720 down
-  let x = 0;
+  // Leave first 200px clear so player starts on the street, not inside a building
+  let x = 200;
   while(x < G.worldW){
     const w = 200 + Math.floor(rnd()*120);
     const h = 240 + Math.floor(rnd()*220);
@@ -572,7 +573,7 @@ const P = {
 };
 
 function resetPlayer(){
-  P.x=300; P.y=G.ground-30; P.vx=0; P.vy=0; P.facing=1;
+  P.x=80; P.y=G.ground-30; P.vx=0; P.vy=0; P.facing=1;
   P.onGround=false; P.onWall=0;
   P.hp=P.maxHp=3; P.fluid=1.0;
   P.swinging=false; P.anchor=null; P.L=0; P.angle=0; P.angVel=0;
