@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>SPIDER — Web of Shadows</title>
+<style>
+  html, body { margin: 0; padding: 0; overflow: hidden; background: #0a0c12; color: #fff;
+    font-family: 'Segoe UI', system-ui, sans-serif; user-select: none; }
+  canvas { display: block; }
+  #hud { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+  #crosshair { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px;
+    transform: translate(-50%, -50%); border: 2px solid rgba(255,255,255,0.85);
+    border-radius: 50%; box-shadow: 0 0 6px rgba(0,0,0,0.7); }
+  #crosshair::before, #crosshair::after { content:''; position:absolute; left:50%; top:50%;
+    transform:translate(-50%,-50%); background: rgba(255,255,255,0.85); }
+  #crosshair::before { width: 2px; height: 8px; }
+  #crosshair::after { width: 8px; height: 2px; }
+  .crosshair-target { background: rgba(255,60,60,0.25); border-color: #ff4040 !important;
+    box-shadow: 0 0 12px #ff4040; }
+  #topLeft { position: absolute; top: 18px; left: 18px; padding: 12px 16px;
+    background: rgba(0,0,0,0.55); border-left: 3px solid #e63946;
+    border-radius: 4px; min-width: 220px; backdrop-filter: blur(4px); }
+  .label { font-size: 11px; letter-spacing: 1.5px; color: #c8c8c8; text-transform: uppercase;}
+  .barWrap { width: 200px; height: 12px; background: #1d1f29; border: 1px solid #2c2f3a;
+    border-radius: 6px; overflow: hidden; margin: 4px 0 10px; }
+  .bar { height: 100%; transition: width 0.18s ease-out; }
+  #healthBar { background: linear-gradient(90deg, #c0252e, #e63946); }
+  #webBar { background: linear-gradient(90deg, #205d96, #5ea7e0); }
+  #score { font-size: 22px; font-weight: 700; letter-spacing: 1px; margin-top: 4px;
+    color: #ffd166; text-shadow: 0 0 8px rgba(255,209,102,0.4);}
+  #scoreLabel { font-size: 10px; letter-spacing: 2px; color: #999; text-transform: uppercase;}
+  #topRight { position: absolute; top: 18px; right: 18px; padding: 14px 18px;
+    background: rgba(0,0,0,0.55); border-right: 3px solid #2a9d8f;
+    border-radius: 4px; max-width: 320px; backdrop-filter: blur(4px); text-align: right;}
+  #missionTitle { color: #2a9d8f; font-weight: 700; font-size: 13px; letter-spacing: 1.5px;
+    text-transform: uppercase; }
+  #missionDesc { font-size: 14px; line-height: 1.4; margin-top: 6px; color: #eee;}
+  #missionProgress { font-size: 11px; color: #aaa; margin-top: 6px; letter-spacing: 1px;}
+  #challengeBox { position: absolute; top: 50%; right: 18px; transform: translateY(-50%);
+    padding: 10px 14px; background: rgba(0,0,0,0.6);
+    border-right: 3px solid #ffd166; border-radius: 4px; display: none; }
+  #challengeTime { font-size: 28px; font-weight: 800; color: #ffd166; }
+  #challengeProgress { font-size: 12px; color: #ddd; }
+  #dialogBox { position: absolute; bottom: 36px; left: 50%; transform: translateX(-50%);
+    padding: 18px 26px; background: rgba(0,0,0,0.78); border: 1px solid #444;
+    border-left: 4px solid #e63946; border-radius: 4px;
+    max-width: 720px; min-width: 320px; display: none; backdrop-filter: blur(6px);}
+  #dialogSpeaker { font-size: 12px; letter-spacing: 2px; color: #e63946; text-transform: uppercase;
+    font-weight: 700; margin-bottom: 6px;}
+  #dialogText { font-size: 16px; line-height: 1.5; color: #f4f4f4; }
+  #dialogContinue { font-size: 11px; color: #888; margin-top: 8px; text-align: right; letter-spacing: 1px;}
+  #toast { position: absolute; top: 25%; left: 50%; transform: translate(-50%, -50%);
+    padding: 14px 32px; background: rgba(0,0,0,0.6); border: 1px solid #2a9d8f;
+    border-radius: 4px; font-size: 16px; font-weight: 600;
+    letter-spacing: 1.5px; opacity: 0; transition: opacity 0.4s, transform 0.4s;
+    text-transform: uppercase; }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #splash { position: fixed; inset: 0; background: #0a0c12; z-index: 100;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: auto; transition: opacity 0.8s; }
+  #splash.fadeout { opacity: 0; pointer-events: none; }
+  #splashTitle { font-size: 86px; font-weight: 900; letter-spacing: 18px;
+    color: #e63946; text-shadow: 0 0 24px rgba(230,57,70,0.55), 4px 4px 0 #1a0408;
+    margin-bottom: 0; transform: skewX(-3deg);}
+  #splashSub { font-size: 22px; letter-spacing: 9px; color: #c0c0c0; margin-top: 6px;
+    text-transform: uppercase; }
+  #splashStory { max-width: 660px; margin: 32px auto 0; line-height: 1.7; color: #ddd;
+    font-size: 16px; padding: 0 20px; text-align: center; }
+  #startBtn { margin-top: 36px; padding: 14px 44px; font-size: 16px; letter-spacing: 4px;
+    border: 2px solid #e63946; background: transparent; color: #fff; cursor: pointer;
+    text-transform: uppercase; font-weight: 700; transition: all 0.2s; pointer-events: auto;}
+  #startBtn:hover { background: #e63946; box-shadow: 0 0 24px rgba(230,57,70,0.6);}
+  #controls { position: absolute; bottom: 16px; left: 16px; font-size: 11px; color: #888;
+    line-height: 1.5; letter-spacing: 0.5px;}
+  #controls b { color: #fff; }
+  #vignette { position: absolute; inset: 0; pointer-events: none;
+    box-shadow: inset 0 0 200px rgba(0,0,0,0.85); }
+  #damage { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle, transparent 40%, rgba(220,40,40,0.7) 100%);
+    transition: opacity 0.18s;}
+  #damage.hit { opacity: 1; }
+  .interactPrompt { position: absolute; padding: 6px 12px; background: rgba(0,0,0,0.7);
+    border: 1px solid #ffd166; border-radius: 3px; font-size: 12px; color: #ffd166;
+    letter-spacing: 1px; transform: translate(-50%, -50%); pointer-events: none;}
+  #pauseScreen { position: fixed; inset: 0; background: rgba(8,10,16,0.85); z-index: 50;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: auto; }
+  #pauseScreen h1 { color: #e63946; font-size: 56px; letter-spacing: 12px; margin: 0;}
+  #pauseScreen p { color: #aaa; letter-spacing: 2px; }
+  #gameOverScreen { position: fixed; inset: 0; background: rgba(20,4,4,0.92); z-index: 60;
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    pointer-events: auto; }
+  #gameOverScreen h1 { color: #e63946; font-size: 96px; letter-spacing: 12px; margin: 0;}
+  .restartBtn { margin-top: 24px; padding: 12px 32px; font-size: 14px;
+    background: transparent; color: #fff; border: 2px solid #fff; cursor: pointer;
+    letter-spacing: 4px; text-transform: uppercase; pointer-events: auto;}
+  .restartBtn:hover { background: #fff; color: #000; }
+</style>
+</head>
+<body>
+
+<div id="splash">
+  <h1 id="splashTitle">SPIDER</h1>
+  <div id="splashSub">Web of Shadows</div>
+  <p id="splashStory">
+    Midnight in the city. The streets are bleeding again — Kingpin's crews moving in plain
+    sight, snatching civilians, leaning on shopkeepers, daring anyone to stop them.<br><br>
+    The cops aren't coming fast enough. So you do what you do: you put on the mask, climb
+    higher than anyone is looking, and you fall on them like rain.<br><br>
+    Tonight you're not just patrolling. Tonight you're making a statement.
+  </p>
+  <button id="startBtn">Begin Patrol</button>
+  <div style="margin-top: 28px; font-size: 11px; color: #666; letter-spacing: 1px;">
+    WASD move · Space jump · LMB swing/web · RMB punch · E zip · Shift dodge · F finisher · Esc pause
+  </div>
+</div>
+
+<div id="hud">
+  <div id="crosshair"></div>
+  <div id="topLeft">
+    <div class="label">Vitals</div>
+    <div class="barWrap"><div id="healthBar" class="bar" style="width:100%"></div></div>
+    <div class="label">Web Fluid</div>
+    <div class="barWrap"><div id="webBar" class="bar" style="width:100%"></div></div>
+    <div id="scoreLabel">Score</div>
+    <div id="score">0</div>
+  </div>
+  <div id="topRight">
+    <div id="missionTitle">Patrol</div>
+    <div id="missionDesc">Stay sharp. The city's restless tonight.</div>
+    <div id="missionProgress"></div>
+  </div>
+  <div id="challengeBox">
+    <div class="label">Challenge</div>
+    <div id="challengeTime">--</div>
+    <div id="challengeProgress">0/0</div>
+  </div>
+  <div id="dialogBox">
+    <div id="dialogSpeaker"></div>
+    <div id="dialogText"></div>
+    <div id="dialogContinue">PRESS SPACE TO CONTINUE</div>
+  </div>
+  <div id="toast"></div>
+  <div id="vignette"></div>
+  <div id="damage"></div>
+  <div id="controls">
+    <b>WASD</b> move · <b>Space</b> jump · <b>LMB</b> web/swing · <b>RMB</b> punch
+    · <b>E</b> zip · <b>Shift</b> dodge · <b>F</b> finisher · <b>R</b> challenge
+  </div>
+</div>
+
+<div id="pauseScreen">
+  <h1>PAUSED</h1>
+  <p>Press Esc to resume</p>
+</div>
+
+<div id="gameOverScreen">
+  <h1>K.O.</h1>
+  <p style="color:#ddd; margin-top: 8px;">The city took its toll tonight.</p>
+  <p style="color:#ffd166; font-size: 22px; letter-spacing: 4px;">FINAL SCORE: <span id="finalScore">0</span></p>
+  <button class="restartBtn" onclick="location.reload()">Try Again</button>
+</div>
+
+<canvas id="game"></canvas>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.1/build/three.module.js"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+
+// ============================================================
+//   SPIDER — Web of Shadows
+//   Built in one HTML, Three.js
+// ============================================================
+
+const TAU = Math.PI * 2;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const lerp  = (a, b, t) => a + (b - a) * t;
+const rand  = (a, b) => a + Math.random() * (b - a);
+const randI = (a, b) => Math.floor(rand(a, b));
+const pick  = arr => arr[randI(0, arr.length)];
+const dist2D = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
+
+// ===================== CONFIG =====================
+const CFG = {
+  city: { blocksX: 14, blocksZ: 14, blockSize: 32, streetWidth: 9 },
+  player: {
+    moveSpeed: 18, sprintMul: 1.6, jumpV: 14,
+    gravity: 32, airControl: 0.35,
+    swingPower: 0.75, swingMaxSpeed: 60,
+    webRange: 90, webZipSpeed: 65,
+    health: 200, web: 100, webRegen: 18, webShotCost: 6, swingCost: 2,
+    meleeRange: 4.6, meleeDamage: 26, webShotDamage: 14,
+    finisherDamage: 999,
+  },
+  enemy: {
+    goon:   { hp: 50,  speed: 5.5, dmg: 8,  range: 1.6, color: 0x6b3a1a, emissive: 0x000000, score: 100 },
+    sniper: { hp: 35,  speed: 1.0, dmg: 14, range: 60,  color: 0x1a3a4d, emissive: 0x113344, score: 200 },
+    brute:  { hp: 140, speed: 4.0, dmg: 18, range: 2.4, color: 0x2d1d1d, emissive: 0x440000, score: 350 },
+  },
+  cam: { offset: new THREE.Vector3(0, 4.5, 9), lookOffset: new THREE.Vector3(0, 1.2, 0), lerp: 0.12 },
+};
+
+// ===================== SCENE =====================
+const renderer = new THREE.WebGLRenderer({
+  canvas: document.getElementById('game'), antialias: true, powerPreference: 'high-performance'
+});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = false; // perf
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0c14);
+scene.fog = new THREE.FogExp2(0x0a0c14, 0.0055);
+
+const camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 800);
+camera.position.set(0, 60, 30);
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Lights — moonlit night
+scene.add(new THREE.HemisphereLight(0x4f6d8c, 0x141622, 0.55));
+const moon = new THREE.DirectionalLight(0xa8c3ff, 0.85);
+moon.position.set(-180, 240, 160);
+scene.add(moon);
+// Warm city glow accent
+const warm = new THREE.DirectionalLight(0xff7a3a, 0.18);
+warm.position.set(120, 80, -120);
+scene.add(warm);
+
+// Toon gradient (3-tone)
+const toonGradient = (() => {
+  const c = document.createElement('canvas'); c.width = 4; c.height = 1;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#3b3d49'; ctx.fillRect(0,0,1,1);
+  ctx.fillStyle = '#7a7e90'; ctx.fillRect(1,0,1,1);
+  ctx.fillStyle = '#bfc3d4'; ctx.fillRect(2,0,1,1);
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(3,0,1,1);
+  const tex = new THREE.CanvasTexture(c);
+  tex.minFilter = THREE.NearestFilter; tex.magFilter = THREE.NearestFilter;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+})();
+
+function toonMat({ color = 0x808080, emissive = 0x000000, emissiveIntensity = 1.0 } = {}) {
+  return new THREE.MeshToonMaterial({
+    color, emissive, emissiveIntensity, gradientMap: toonGradient
+  });
+}
+
+// ===================== GLOBAL STATE =====================
+const state = {
+  running: false,
+  paused: false,
+  gameOver: false,
+  time: 0,
+  dt: 0,
+  score: 0,
+  multiplier: 1,
+  enemies: [],
+  pickups: [],
+  buildings: [],   // { mesh, box, top: y of roof }
+  buildingTopMap: [], // grid lookup for AI roof spawning
+  effects: [],     // particles, web lines etc
+  webLine: null,
+  webAttach: null, // THREE.Vector3 if attached
+  webSwingDist: 0,
+  mission: null,
+  challenge: null,
+  storyQueue: [],
+  storyActive: false,
+  notifyToast: { text: '', t: 0 },
+  hitCooldown: 0,
+  pickupSpawnT: 0,
+};
+
+// ===================== INPUT =====================
+const keys = {};
+const mouse = { x: 0, y: 0, dx: 0, dy: 0, lmb: false, rmb: false };
+let pointerLocked = false;
+
+document.addEventListener('keydown', (e) => {
+  keys[e.code] = true;
+  if (e.code === 'Escape') togglePause();
+  if (e.code === 'KeyR') tryStartChallenge();
+  if (state.storyActive && (e.code === 'Space' || e.code === 'Enter')) {
+    advanceStory();
+    e.preventDefault();
+  }
+});
+document.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+renderer.domElement.addEventListener('click', () => {
+  if (state.running && !state.paused && !state.storyActive && !pointerLocked) {
+    renderer.domElement.requestPointerLock();
+  }
+});
+document.addEventListener('pointerlockchange', () => {
+  pointerLocked = (document.pointerLockElement === renderer.domElement);
+});
+document.addEventListener('mousemove', (e) => {
+  if (pointerLocked) { mouse.dx += e.movementX; mouse.dy += e.movementY; }
+});
+document.addEventListener('mousedown', (e) => {
+  if (!pointerLocked) return;
+  if (e.button === 0) mouse.lmb = true;
+  if (e.button === 2) mouse.rmb = true;
+});
+document.addEventListener('mouseup', (e) => {
+  if (e.button === 0) mouse.lmb = false;
+  if (e.button === 2) mouse.rmb = false;
+});
+document.addEventListener('contextmenu', (e) => e.preventDefault());
+
+// ===================== CITY GENERATION =====================
+function makeWindowTexture(w = 256, h = 512) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#10131a'; ctx.fillRect(0, 0, w, h);
+  const cols = 6, rows = 14;
+  const padX = 8, padY = 12;
+  const cw = (w - padX * 2) / cols, rh = (h - padY * 2) / rows;
+  for (let r = 0; r < rows; r++) {
+    for (let cc = 0; cc < cols; cc++) {
+      const x = padX + cc * cw + 2, y = padY + r * rh + 2;
+      const ww = cw - 4, hh = rh - 4;
+      const lit = Math.random() < 0.35;
+      if (lit) {
+        const tones = ['#fff5cc', '#ffd685', '#fff0a0', '#cfe1ff', '#ffd6d6'];
+        ctx.fillStyle = pick(tones);
+      } else {
+        ctx.fillStyle = '#1a1f2c';
+      }
+      ctx.fillRect(x, y, ww, hh);
+      if (lit && Math.random() < 0.3) {
+        ctx.fillStyle = 'rgba(0,0,0,0.4)';
+        ctx.fillRect(x, y + hh*0.4, ww, hh*0.15);
+      }
+    }
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.wrapS = t.wrapT = THREE.RepeatWrapping;
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+
+const sharedWindowTextures = [makeWindowTexture(), makeWindowTexture(), makeWindowTexture()];
+
+function buildCity() {
+  const { blocksX, blocksZ, blockSize, streetWidth } = CFG.city;
+  const totalW = blocksX * blockSize;
+  const totalH = blocksZ * blockSize;
+
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(totalW * 1.4, totalH * 1.4);
+  const groundMat = new THREE.MeshToonMaterial({
+    color: 0x111319, gradientMap: toonGradient
+  });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  ground.position.y = 0;
+  scene.add(ground);
+
+  // Street markings (bright lines on roads)
+  const streetMat = new THREE.MeshBasicMaterial({ color: 0x1a1d28 });
+  for (let i = 0; i <= blocksX; i++) {
+    const x = -totalW/2 + i * blockSize;
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(streetWidth, totalH * 1.1), streetMat);
+    g.rotation.x = -Math.PI / 2; g.position.set(x, 0.01, 0); scene.add(g);
+  }
+  for (let i = 0; i <= blocksZ; i++) {
+    const z = -totalH/2 + i * blockSize;
+    const g = new THREE.Mesh(new THREE.PlaneGeometry(totalW * 1.1, streetWidth), streetMat);
+    g.rotation.x = -Math.PI / 2; g.position.set(0, 0.01, z); scene.add(g);
+  }
+
+  // Buildings
+  const grid = [];
+  for (let i = 0; i < blocksX; i++) {
+    grid[i] = [];
+    for (let j = 0; j < blocksZ; j++) {
+      const cx = -totalW/2 + i * blockSize + blockSize/2;
+      const cz = -totalH/2 + j * blockSize + blockSize/2;
+      const w = blockSize - streetWidth - rand(0, 4);
+      const d = blockSize - streetWidth - rand(0, 4);
+
+      // Heights: distribute mix of small / medium / big
+      const r = Math.random();
+      let h;
+      if (r < 0.15) h = rand(85, 130);          // skyscraper
+      else if (r < 0.45) h = rand(45, 75);      // tower
+      else if (r < 0.8)  h = rand(22, 45);      // mid
+      else h = rand(12, 22);                     // low
+
+      const tex = sharedWindowTextures[randI(0, sharedWindowTextures.length)].clone();
+      tex.repeat.set(Math.max(1, Math.round(w / 4)), Math.max(2, Math.round(h / 5)));
+      tex.needsUpdate = true;
+
+      const bMat = new THREE.MeshToonMaterial({
+        color: 0xffffff,
+        map: tex,
+        gradientMap: toonGradient,
+        emissive: 0x222633,
+        emissiveIntensity: 0.5,
+      });
+      // Cap / accent on top
+      const baseGeo = new THREE.BoxGeometry(w, h, d);
+      const mesh = new THREE.Mesh(baseGeo, bMat);
+      mesh.position.set(cx, h/2, cz);
+      scene.add(mesh);
+
+      // Rooftop trim
+      const capH = 1.4;
+      const cap = new THREE.Mesh(
+        new THREE.BoxGeometry(w + 0.2, capH, d + 0.2),
+        toonMat({ color: 0x2a2d3a })
+      );
+      cap.position.set(cx, h + capH/2, cz);
+      scene.add(cap);
+
+      // Roof access cube ~30% of the time
+      if (Math.random() < 0.35) {
+        const rw = rand(3, 6), rh = rand(2, 4), rd = rand(3, 6);
+        const roofBox = new THREE.Mesh(
+          new THREE.BoxGeometry(rw, rh, rd),
+          toonMat({ color: 0x3a3d4a })
+        );
+        roofBox.position.set(
+          cx + rand(-w/2 + rw/2, w/2 - rw/2),
+          h + capH + rh/2,
+          cz + rand(-d/2 + rd/2, d/2 - rd/2)
+        );
+        scene.add(roofBox);
+      }
+      // Antenna sometimes
+      if (h > 70 && Math.random() < 0.5) {
+        const ant = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.15, 0.15, 8, 6),
+          toonMat({ color: 0x999999, emissive: 0xff2222, emissiveIntensity: 0.6 })
+        );
+        ant.position.set(cx, h + capH + 4, cz);
+        scene.add(ant);
+        const tip = new THREE.Mesh(
+          new THREE.SphereGeometry(0.4, 8, 8),
+          new THREE.MeshBasicMaterial({ color: 0xff4444 })
+        );
+        tip.position.set(cx, h + capH + 8, cz);
+        scene.add(tip);
+      }
+
+      const aabb = new THREE.Box3().setFromObject(mesh);
+      const top = h + capH;
+      const data = { mesh, aabb, top, cx, cz, w, d };
+      state.buildings.push(data);
+      grid[i][j] = data;
+    }
+  }
+  state.buildingTopMap = grid;
+
+  // City borders (invisible walls)
+  // Big skybox dome with stars
+  const starGeo = new THREE.BufferGeometry();
+  const starCount = 800;
+  const starPos = new Float32Array(starCount * 3);
+  for (let i = 0; i < starCount; i++) {
+    const r = rand(380, 480);
+    const theta = rand(0, TAU);
+    const phi = rand(0.05, Math.PI * 0.5);
+    starPos[i*3]   = r * Math.sin(phi) * Math.cos(theta);
+    starPos[i*3+1] = r * Math.cos(phi);
+    starPos[i*3+2] = r * Math.sin(phi) * Math.sin(theta);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({
+    color: 0xffffff, size: 0.9, sizeAttenuation: false, transparent: true, opacity: 0.85
+  }));
+  scene.add(stars);
+
+  // Moon
+  const moonMesh = new THREE.Mesh(
+    new THREE.SphereGeometry(18, 24, 24),
+    new THREE.MeshBasicMaterial({ color: 0xfff7d6 })
+  );
+  moonMesh.position.set(-300, 220, 200);
+  scene.add(moonMesh);
+  // Halo
+  const halo = new THREE.Mesh(
+    new THREE.SphereGeometry(28, 24, 24),
+    new THREE.MeshBasicMaterial({ color: 0xffe6a0, transparent: true, opacity: 0.18 })
+  );
+  halo.position.copy(moonMesh.position);
+  scene.add(halo);
+}
+
+// Find nearest valid web attach point above & in front of player
+const _tmpV = new THREE.Vector3();
+function findWebAttachPoint() {
+  // We aim where the camera looks; cast a virtual ray; the attach point is roughly
+  // somewhere ahead-and-up. Simplest: pick the building whose roof edge is closest to the
+  // ray direction within range and above the player's position.
+  const origin = player.position.clone();
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  forward.y = Math.max(forward.y, 0.05);
+  forward.normalize();
+
+  let best = null; let bestScore = Infinity;
+  for (const b of state.buildings) {
+    const top = b.top;
+    if (top < origin.y - 1) continue;
+    const center = new THREE.Vector3(b.cx, top, b.cz);
+    const dirTo = center.clone().sub(origin);
+    const dist = dirTo.length();
+    if (dist > CFG.player.webRange) continue;
+    if (dist < 8) continue;
+    dirTo.normalize();
+    const dot = dirTo.dot(forward);
+    if (dot < 0.55) continue;
+    // Score by angle from forward + dist preference
+    const angleScore = (1 - dot) * 80;
+    const distScore = Math.abs(dist - 30) * 0.4;
+    const heightBonus = (top - origin.y) > 5 ? -10 : 0;
+    const s = angleScore + distScore + heightBonus;
+    if (s < bestScore) { bestScore = s; best = { point: center, build: b }; }
+  }
+  return best;
+}
+
+// ===================== HUD =====================
+const dom = {
+  hp: document.getElementById('healthBar'),
+  web: document.getElementById('webBar'),
+  score: document.getElementById('score'),
+  missionTitle: document.getElementById('missionTitle'),
+  missionDesc: document.getElementById('missionDesc'),
+  missionProgress: document.getElementById('missionProgress'),
+  challengeBox: document.getElementById('challengeBox'),
+  challengeTime: document.getElementById('challengeTime'),
+  challengeProgress: document.getElementById('challengeProgress'),
+  dialogBox: document.getElementById('dialogBox'),
+  dialogSpeaker: document.getElementById('dialogSpeaker'),
+  dialogText: document.getElementById('dialogText'),
+  toast: document.getElementById('toast'),
+  damage: document.getElementById('damage'),
+  crosshair: document.getElementById('crosshair'),
+  splash: document.getElementById('splash'),
+  startBtn: document.getElementById('startBtn'),
+  pauseScreen: document.getElementById('pauseScreen'),
+  gameOverScreen: document.getElementById('gameOverScreen'),
+  finalScore: document.getElementById('finalScore'),
+};
+
+function showToast(text, ms = 2200) {
+  dom.toast.textContent = text;
+  dom.toast.classList.add('show');
+  state.notifyToast.t = ms;
+}
+function updateHUD() {
+  dom.hp.style.width  = `${(player.health / CFG.player.health) * 100}%`;
+  dom.web.style.width = `${(player.web / CFG.player.web) * 100}%`;
+  dom.score.textContent = state.score.toLocaleString();
+}
+function showDialog(speaker, text) {
+  dom.dialogSpeaker.textContent = speaker;
+  dom.dialogText.textContent = text;
+  dom.dialogBox.style.display = 'block';
+}
+function hideDialog() { dom.dialogBox.style.display = 'none'; }
+
+// ===================== STORY =====================
+const storyChapters = [
+  // Intro is shown on splash; first chapter is mission 1 setup
+  {
+    id: 'ch1_open',
+    lines: [
+      ['DISPATCH', "All units: 'Vulture' crew is hitting the rooftops near 5th and Pine. Civilian taken hostage. We need eyes."],
+      ['SPIDER',   "Already on it. Tell me when you've got something I haven't seen."],
+    ],
+    onEnd: () => assignMission('rescue'),
+  },
+  {
+    id: 'ch2_brutes',
+    lines: [
+      ['MJ', "Hey. The diner camera caught masked guys hauling something into the warehouse on the docks. They were *big*."],
+      ['SPIDER', "Big I can do. Stay inside, MJ."],
+      ['MJ', "Already am. Be careful out there."],
+    ],
+    onEnd: () => assignMission('crime'),
+  },
+  {
+    id: 'ch3_defend',
+    lines: [
+      ['DISPATCH', "Multiple unknowns converging on the plaza. We have civilians on the ground floor."],
+      ['SPIDER',   "Then I'll be the ceiling tonight. Hold the line."],
+    ],
+    onEnd: () => assignMission('defend'),
+  },
+  {
+    id: 'ch_final',
+    lines: [
+      ['MJ', "Twitter is going wild about you, you know."],
+      ['SPIDER', "Tell them I do this for the views."],
+      ['MJ', "Liar."],
+      ['SPIDER', "Yeah."],
+      ['DISPATCH', "Spider — Kingpin's lieutenants are clustered downtown. Take them all down and the night is yours."],
+    ],
+    onEnd: () => assignMission('boss'),
+  }
+];
+
+function queueStory(id) {
+  const ch = storyChapters.find(c => c.id === id);
+  if (!ch) return;
+  state.storyQueue = ch.lines.map(([s, t]) => ({ speaker: s, text: t, after: null }));
+  // Tag last line with after-callback
+  if (state.storyQueue.length) state.storyQueue[state.storyQueue.length - 1].after = ch.onEnd;
+  state.storyActive = true;
+  advanceStory(true);
+}
+function advanceStory(initial = false) {
+  if (!state.storyActive) return;
+  if (!initial && state.storyQueue.length === 0) {
+    state.storyActive = false; hideDialog();
+    return;
+  }
+  if (initial && state.storyQueue.length === 0) { state.storyActive = false; hideDialog(); return; }
+  const line = initial ? state.storyQueue[0] : state.storyQueue.shift();
+  if (!initial) {
+    if (state.storyQueue.length === 0) {
+      // last line was just dismissed
+      const after = line && line.after;
+      state.storyActive = false; hideDialog();
+      if (after) after();
+      return;
+    }
+    showDialog(state.storyQueue[0].speaker, state.storyQueue[0].text);
+  } else {
+    showDialog(line.speaker, line.text);
+  }
+}
+
+// ===================== PLAYER =====================
+const playerGroup = new THREE.Group();
+scene.add(playerGroup);
+
+// Body — stylized
+const playerBody = (() => {
+  const g = new THREE.Group();
+  const torso = new THREE.Mesh(
+    new THREE.BoxGeometry(1.1, 1.5, 0.6),
+    toonMat({ color: 0xc0252e, emissive: 0x300000, emissiveIntensity: 0.3 })
+  );
+  torso.position.y = 0.75;
+  g.add(torso);
+  // chest emblem
+  const emblem = new THREE.Mesh(
+    new THREE.CircleGeometry(0.28, 16),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  emblem.position.set(0, 1.05, 0.31);
+  g.add(emblem);
+  const spider = new THREE.Mesh(
+    new THREE.CircleGeometry(0.18, 8),
+    new THREE.MeshBasicMaterial({ color: 0x000000 })
+  );
+  spider.position.set(0, 1.05, 0.32);
+  g.add(spider);
+  // legs
+  const legGeo = new THREE.BoxGeometry(0.42, 1.4, 0.5);
+  const legMat = toonMat({ color: 0x103a78, emissive: 0x05123a, emissiveIntensity: 0.3 });
+  const legL = new THREE.Mesh(legGeo, legMat); legL.position.set(-0.3, -0.2, 0); g.add(legL);
+  const legR = new THREE.Mesh(legGeo, legMat); legR.position.set( 0.3, -0.2, 0); g.add(legR);
+  // arms
+  const armGeo = new THREE.BoxGeometry(0.32, 1.2, 0.4);
+  const armL = new THREE.Mesh(armGeo, toonMat({ color: 0xc0252e, emissive: 0x200000, emissiveIntensity: 0.3 }));
+  armL.position.set(-0.7, 0.85, 0); g.add(armL);
+  const armR = new THREE.Mesh(armGeo, toonMat({ color: 0xc0252e, emissive: 0x200000, emissiveIntensity: 0.3 }));
+  armR.position.set( 0.7, 0.85, 0); g.add(armR);
+  // head
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.7, 0.7, 0.7),
+    toonMat({ color: 0xc0252e, emissive: 0x300000, emissiveIntensity: 0.4 })
+  );
+  head.position.y = 1.85; g.add(head);
+  // eyes
+  const eyeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.05), eyeMat);
+  eyeL.position.set(-0.16, 1.9, 0.36); g.add(eyeL);
+  const eyeR = new THREE.Mesh(new THREE.BoxGeometry(0.18, 0.1, 0.05), eyeMat);
+  eyeR.position.set( 0.16, 1.9, 0.36); g.add(eyeR);
+
+  g.children.forEach(c => {
+    if (c.material) c.castShadow = false;
+  });
+  // Save references for animation
+  g.userData = { torso, head, legL, legR, armL, armR, emblem, spider, eyeL, eyeR };
+  return g;
+})();
+playerGroup.add(playerBody);
+
+const player = {
+  position: new THREE.Vector3(0, 80, 0),
+  velocity: new THREE.Vector3(),
+  yaw: 0,
+  pitch: -0.15,
+  onGround: false,
+  swinging: false,
+  zipping: false,
+  zipTarget: null,
+  health: CFG.player.health,
+  web: CFG.player.web,
+  punchT: 0,
+  meleeAnim: 0,
+  dodgeT: 0,
+  dodgeDir: new THREE.Vector3(),
+  finisherT: 0,
+};
+
+function damagePlayer(amount) {
+  if (state.gameOver || state.hitCooldown > 0 || player.dodgeT > 0) return;
+  player.health -= amount;
+  state.hitCooldown = 0.6;
+  dom.damage.classList.add('hit');
+  setTimeout(() => dom.damage.classList.remove('hit'), 180);
+  if (player.health <= 0) {
+    triggerGameOver();
+  }
+}
+
+function triggerGameOver() {
+  state.gameOver = true;
+  dom.finalScore.textContent = state.score.toLocaleString();
+  dom.gameOverScreen.style.display = 'flex';
+  document.exitPointerLock?.();
+}
+
+// ===================== ENEMIES =====================
+function spawnEnemy(type, pos) {
+  const cfg = CFG.enemy[type];
+  const g = new THREE.Group();
+  g.position.copy(pos);
+
+  // body
+  const torso = new THREE.Mesh(
+    new THREE.BoxGeometry(1.0, 1.4, 0.55),
+    toonMat({ color: cfg.color, emissive: cfg.emissive, emissiveIntensity: 0.4 })
+  );
+  torso.position.y = 0.7; g.add(torso);
+  const head = new THREE.Mesh(
+    new THREE.BoxGeometry(0.6, 0.6, 0.6),
+    toonMat({ color: 0x331a0d, emissive: cfg.emissive, emissiveIntensity: 0.3 })
+  );
+  head.position.y = 1.7; g.add(head);
+  // legs
+  const lg = new THREE.BoxGeometry(0.34, 1.3, 0.4);
+  const lm = toonMat({ color: 0x111111 });
+  const ll = new THREE.Mesh(lg, lm); ll.position.set(-0.25, -0.15, 0); g.add(ll);
+  const lr = new THREE.Mesh(lg, lm); lr.position.set( 0.25, -0.15, 0); g.add(lr);
+  // arms
+  const ag = new THREE.BoxGeometry(0.28, 1.05, 0.36);
+  const am = toonMat({ color: cfg.color });
+  const al = new THREE.Mesh(ag, am); al.position.set(-0.65, 0.8, 0); g.add(al);
+  const ar = new THREE.Mesh(ag, am); ar.position.set( 0.65, 0.8, 0); g.add(ar);
+
+  // weapon for sniper
+  if (type === 'sniper') {
+    const rifle = new THREE.Mesh(
+      new THREE.BoxGeometry(0.18, 0.18, 1.4),
+      toonMat({ color: 0x222233, emissive: 0x222244, emissiveIntensity: 0.5 })
+    );
+    rifle.position.set(0.7, 1.1, 0.5);
+    g.add(rifle);
+  }
+  // brute extra mass
+  if (type === 'brute') {
+    torso.scale.set(1.45, 1.25, 1.35);
+    al.scale.set(1.4, 1.4, 1.4); ar.scale.set(1.4, 1.4, 1.4);
+    al.position.set(-0.85, 0.9, 0); ar.position.set(0.85, 0.9, 0);
+    head.scale.set(1.2, 1.2, 1.2);
+  }
+  // health bar
+  const barGeo = new THREE.PlaneGeometry(1.4, 0.16);
+  const barBg = new THREE.Mesh(barGeo, new THREE.MeshBasicMaterial({ color: 0x1a1a22 }));
+  barBg.position.set(0, 2.7, 0); g.add(barBg);
+  const barFg = new THREE.Mesh(
+    new THREE.PlaneGeometry(1.36, 0.12),
+    new THREE.MeshBasicMaterial({ color: type === 'brute' ? 0xc0252e : type === 'sniper' ? 0x4f9bd6 : 0xffaa3a })
+  );
+  barFg.position.set(0, 2.7, 0.01); g.add(barFg);
+
+  scene.add(g);
+
+  return {
+    type, group: g, position: g.position, hp: cfg.hp, maxHp: cfg.hp,
+    config: cfg,
+    cooldown: rand(0.5, 1.5),
+    velocity: new THREE.Vector3(),
+    state: 'idle',
+    bar: { bg: barBg, fg: barFg, fgGeo: barFg.geometry },
+    targetPos: new THREE.Vector3(),
+    flashT: 0,
+    webbedT: 0,
+    aliveT: 0,
+    yaw: 0,
+    walkPhase: 0,
+    parts: { head, torso, legL: ll, legR: lr, armL: al, armR: ar },
+  };
+}
+
+function damageEnemy(e, amount, knockDir = null) {
+  e.hp -= amount;
+  e.flashT = 0.18;
+  if (knockDir) e.velocity.add(knockDir.clone().multiplyScalar(8));
+  // bar
+  const ratio = clamp(e.hp / e.maxHp, 0, 1);
+  e.bar.fg.scale.x = ratio;
+  e.bar.fg.position.x = -0.68 * (1 - ratio);
+  if (e.hp <= 0) killEnemy(e);
+}
+function killEnemy(e) {
+  scene.remove(e.group);
+  state.enemies.splice(state.enemies.indexOf(e), 1);
+  state.score += e.config.score * state.multiplier;
+  showFloatScore(`+${e.config.score * state.multiplier}`, e.position);
+  spawnPoof(e.position, 0xffaa3a);
+  if (state.mission) state.mission.onEnemyKilled?.(e);
+}
+
+function findEnemyInFront(maxDist, maxAngleCos = 0.65) {
+  const origin = player.position.clone(); origin.y += 1.0;
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  let best = null, bestD = Infinity;
+  for (const e of state.enemies) {
+    const dir = e.position.clone().sub(origin);
+    const d = dir.length();
+    if (d > maxDist) continue;
+    const dot = dir.normalize().dot(forward);
+    if (dot < maxAngleCos) continue;
+    const score = d - dot * 5;
+    if (score < bestD) { bestD = score; best = e; }
+  }
+  return best;
+}
+
+function findClosestEnemyInRange(range, fromPos = null) {
+  const origin = fromPos || player.position;
+  let best = null, bestD = Infinity;
+  for (const e of state.enemies) {
+    const d = origin.distanceTo(e.position);
+    if (d < range && d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+
+// ===================== EFFECTS =====================
+function spawnPoof(position, color = 0xffd166, count = 14) {
+  const g = new THREE.BufferGeometry();
+  const pos = new Float32Array(count * 3);
+  const vel = [];
+  for (let i = 0; i < count; i++) {
+    pos[i*3]   = position.x;
+    pos[i*3+1] = position.y + 1;
+    pos[i*3+2] = position.z;
+    vel.push(new THREE.Vector3(rand(-1,1), rand(0.6, 2.0), rand(-1,1)).multiplyScalar(rand(3, 7)));
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const m = new THREE.PointsMaterial({ color, size: 0.5, transparent: true, opacity: 1.0, depthWrite: false });
+  const p = new THREE.Points(g, m);
+  scene.add(p);
+  state.effects.push({ type: 'poof', mesh: p, life: 0.8, maxLife: 0.8, vel, geo: g });
+}
+
+function spawnFloatText(text, position, color = '#ffffff') {
+  // Use a sprite with canvas
+  const c = document.createElement('canvas'); c.width = 256; c.height = 64;
+  const ctx = c.getContext('2d');
+  ctx.font = '700 36px Segoe UI, sans-serif';
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.lineWidth = 5; ctx.strokeStyle = '#000'; ctx.strokeText(text, 128, 32);
+  ctx.fillStyle = color; ctx.fillText(text, 128, 32);
+  const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;
+  const mat = new THREE.SpriteMaterial({ map: tex, depthTest: false, transparent: true });
+  const s = new THREE.Sprite(mat);
+  s.scale.set(4, 1, 1); s.position.copy(position); s.position.y += 2.5;
+  scene.add(s);
+  state.effects.push({ type: 'float', mesh: s, life: 1.2, maxLife: 1.2 });
+}
+function showFloatScore(text, position) { spawnFloatText(text, position, '#ffd166'); }
+
+// Web line (visual rope)
+function ensureWebLine() {
+  if (state.webLine) return state.webLine;
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(new Float32Array(6), 3));
+  const m = new THREE.LineBasicMaterial({ color: 0xffffff, linewidth: 2, transparent: true, opacity: 0.95 });
+  const l = new THREE.Line(g, m);
+  scene.add(l);
+  state.webLine = l;
+  return l;
+}
+function setWebLine(from, to) {
+  const l = ensureWebLine();
+  const arr = l.geometry.attributes.position.array;
+  arr[0] = from.x; arr[1] = from.y + 1.0; arr[2] = from.z;
+  arr[3] = to.x;   arr[4] = to.y;         arr[5] = to.z;
+  l.geometry.attributes.position.needsUpdate = true;
+  l.visible = true;
+}
+function hideWebLine() { if (state.webLine) state.webLine.visible = false; }
+
+// Quick web shot tracer
+function spawnWebShot(from, to) {
+  const g = new THREE.BufferGeometry();
+  const arr = new Float32Array(6);
+  arr[0]=from.x; arr[1]=from.y; arr[2]=from.z;
+  arr[3]=to.x;   arr[4]=to.y;   arr[5]=to.z;
+  g.setAttribute('position', new THREE.BufferAttribute(arr, 3));
+  const m = new THREE.LineBasicMaterial({ color: 0xffffff, transparent: true, opacity: 1.0 });
+  const l = new THREE.Line(g, m);
+  scene.add(l);
+  state.effects.push({ type: 'tracer', mesh: l, life: 0.18, maxLife: 0.18 });
+}
+
+// ===================== PLAYER UPDATE =====================
+function updatePlayer(dt) {
+  // Mouse look
+  player.yaw -= mouse.dx * 0.0024;
+  player.pitch -= mouse.dy * 0.0024;
+  player.pitch = clamp(player.pitch, -1.2, 1.0);
+  mouse.dx = 0; mouse.dy = 0;
+
+  // Forward/right vectors based on yaw only (XZ plane)
+  const fwd = new THREE.Vector3(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+  const right = new THREE.Vector3(Math.cos(player.yaw), 0, -Math.sin(player.yaw));
+
+  const wishDir = new THREE.Vector3();
+  if (keys['KeyW']) wishDir.add(fwd);
+  if (keys['KeyS']) wishDir.sub(fwd);
+  if (keys['KeyD']) wishDir.add(right);
+  if (keys['KeyA']) wishDir.sub(right);
+  if (wishDir.lengthSq() > 0) wishDir.normalize();
+
+  const sprint = keys['ShiftLeft'] || keys['ShiftRight'] ? CFG.player.sprintMul : 1;
+
+  // Dodge
+  if (keys['ShiftLeft'] && player.onGround && player.dodgeT <= 0 && wishDir.lengthSq() > 0) {
+    // Treat shift+direction as quick burst, but only on press (use cooldown)
+    // Already applied via sprint; we also do a small nudge here
+  }
+
+  // Web swinging
+  if (player.swinging && state.webAttach) {
+    // Pendulum: keep distance constraint, gravity, controlled input
+    // Apply gravity to velocity
+    player.velocity.y -= CFG.player.gravity * dt;
+
+    // Add controlled input force
+    if (wishDir.lengthSq() > 0) {
+      const pushAmt = CFG.player.swingPower * 22;
+      player.velocity.x += wishDir.x * pushAmt * dt;
+      player.velocity.z += wishDir.z * pushAmt * dt;
+    }
+    // Reduce web fluid
+    player.web -= CFG.player.swingCost * dt;
+    if (player.web <= 0) { releaseWeb(); player.web = 0; }
+
+    // Predict pos
+    player.position.addScaledVector(player.velocity, dt);
+
+    // Constrain to rope length (Verlet-style)
+    const toAttach = state.webAttach.clone().sub(player.position);
+    const len = toAttach.length();
+    if (len > state.webSwingDist) {
+      const correct = toAttach.normalize().multiplyScalar(len - state.webSwingDist);
+      player.position.add(correct);
+      // Project velocity along rope (remove radial component pulling away)
+      const ropeDir = state.webAttach.clone().sub(player.position).normalize();
+      const radialV = player.velocity.dot(ropeDir);
+      if (radialV < 0) player.velocity.addScaledVector(ropeDir, -radialV);
+    }
+    // Reduce rope length while LMB held to "reel in"
+    if (mouse.lmb) {
+      state.webSwingDist = Math.max(8, state.webSwingDist - 18 * dt);
+    }
+    // Cap velocity
+    if (player.velocity.length() > CFG.player.swingMaxSpeed) {
+      player.velocity.setLength(CFG.player.swingMaxSpeed);
+    }
+
+    // Release on space (cut rope)
+    if (keys['Space']) releaseWeb();
+
+  } else if (player.zipping && player.zipTarget) {
+    const toT = player.zipTarget.clone().sub(player.position);
+    const d = toT.length();
+    if (d < 4) {
+      player.zipping = false; player.zipTarget = null;
+      // small launch upward
+      player.velocity.set(0, 12, 0);
+    } else {
+      const dir = toT.divideScalar(d);
+      player.velocity.copy(dir.multiplyScalar(CFG.player.webZipSpeed));
+      player.position.addScaledVector(player.velocity, dt);
+    }
+  } else {
+    // Normal movement
+    const targetSpeed = CFG.player.moveSpeed * sprint;
+    const ctrl = player.onGround ? 1 : CFG.player.airControl;
+    const desiredVx = wishDir.x * targetSpeed;
+    const desiredVz = wishDir.z * targetSpeed;
+    player.velocity.x = lerp(player.velocity.x, desiredVx, ctrl * 8 * dt);
+    player.velocity.z = lerp(player.velocity.z, desiredVz, ctrl * 8 * dt);
+
+    // Gravity
+    player.velocity.y -= CFG.player.gravity * dt;
+
+    // Jump
+    if (keys['Space'] && player.onGround) {
+      player.velocity.y = CFG.player.jumpV;
+      player.onGround = false;
+    }
+
+    // Apply
+    player.position.addScaledVector(player.velocity, dt);
+  }
+
+  // Collide with buildings (simple AABB clamp)
+  resolveBuildingCollisions();
+
+  // Ground
+  const FLOOR_Y = 1.6;
+  if (player.position.y < FLOOR_Y) {
+    player.position.y = FLOOR_Y;
+    player.velocity.y = 0;
+    player.onGround = true;
+  } else if (player.position.y > FLOOR_Y + 0.01) {
+    // Check if on a roof
+    let roofHit = false;
+    for (const b of state.buildings) {
+      const halfW = b.w / 2 + 0.5, halfD = b.d / 2 + 0.5;
+      if (player.position.x > b.cx - halfW && player.position.x < b.cx + halfW &&
+          player.position.z > b.cz - halfD && player.position.z < b.cz + halfD) {
+        const roofPlayerY = b.top + FLOOR_Y - 0.01;
+        if (player.velocity.y <= 0 && player.position.y >= b.top + 0.4 && player.position.y < roofPlayerY + 0.6) {
+          player.position.y = roofPlayerY;
+          player.velocity.y = 0;
+          player.onGround = true;
+          roofHit = true;
+          break;
+        }
+      }
+    }
+    if (!roofHit) player.onGround = false;
+  }
+
+  // Web fluid regen
+  player.web = clamp(player.web + CFG.player.webRegen * dt, 0, CFG.player.web);
+
+  // Web shoot input
+  if (mouse.lmb && !player.swinging && !player.zipping && state.webAttach == null) {
+    tryWebSwing();
+  }
+
+  // Punch
+  if (mouse.rmb && player.punchT <= 0) {
+    doMelee();
+    player.punchT = 0.45;
+    mouse.rmb = false;
+  }
+  player.punchT = Math.max(0, player.punchT - dt);
+
+  // E zip
+  if (keys['KeyE'] && !player.zipping && !player.swinging) {
+    const ap = findWebAttachPoint();
+    if (ap) {
+      player.zipping = true; player.zipTarget = ap.point.clone();
+      player.web = Math.max(0, player.web - 8);
+      keys['KeyE'] = false;
+    }
+  }
+
+  // Finisher: F when close to enemy and aimed
+  if (keys['KeyF']) {
+    const e = findEnemyInFront(6, 0.65);
+    if (e) {
+      damageEnemy(e, CFG.player.finisherDamage);
+      // small camera punch
+      cameraShake = 0.3;
+      showFloatScore('FINISHER!', e.position);
+      keys['KeyF'] = false;
+    }
+  }
+
+  // Smooth body orient
+  playerBody.rotation.y = lerp(playerBody.rotation.y, player.yaw, 12 * dt);
+
+  // Anim: simple swing
+  const speed = Math.hypot(player.velocity.x, player.velocity.z);
+  const phase = (state.time * (player.onGround ? 8 : 4)) % TAU;
+  const sw = Math.sin(phase) * (player.onGround ? 0.8 : 0.4);
+  const ud = playerBody.userData;
+  if (player.swinging) {
+    // Spread arms upward a bit
+    ud.armL.rotation.x = -2.0;
+    ud.armR.rotation.x = -2.0;
+    ud.legL.rotation.x = 0.3; ud.legR.rotation.x = -0.3;
+  } else if (speed > 0.5) {
+    ud.armL.rotation.x = sw * 0.6;
+    ud.armR.rotation.x = -sw * 0.6;
+    ud.legL.rotation.x = -sw * 0.6;
+    ud.legR.rotation.x = sw * 0.6;
+  } else {
+    ud.armL.rotation.x = lerp(ud.armL.rotation.x, 0, 0.2);
+    ud.armR.rotation.x = lerp(ud.armR.rotation.x, 0, 0.2);
+    ud.legL.rotation.x = lerp(ud.legL.rotation.x, 0, 0.2);
+    ud.legR.rotation.x = lerp(ud.legR.rotation.x, 0, 0.2);
+  }
+  // Punch swing
+  if (player.punchT > 0) {
+    const t = 1 - (player.punchT / 0.45);
+    ud.armR.rotation.x = -1.6 * Math.sin(t * Math.PI);
+  }
+
+  playerGroup.position.copy(player.position);
+  playerGroup.position.y -= 1.6; // feet alignment
+
+  state.hitCooldown = Math.max(0, state.hitCooldown - dt);
+
+  // Update web line visual
+  if (player.swinging && state.webAttach) {
+    setWebLine(player.position, state.webAttach);
+  } else if (player.zipping && player.zipTarget) {
+    setWebLine(player.position, player.zipTarget);
+  } else {
+    hideWebLine();
+  }
+}
+
+function resolveBuildingCollisions() {
+  // Wall collision: if player x/z inside building footprint and y < top, push out laterally
+  for (const b of state.buildings) {
+    const halfW = b.w / 2, halfD = b.d / 2;
+    const inX = player.position.x > b.cx - halfW && player.position.x < b.cx + halfW;
+    const inZ = player.position.z > b.cz - halfD && player.position.z < b.cz + halfD;
+    if (inX && inZ && player.position.y < b.top - 0.1) {
+      // Pick nearest face to push out
+      const dxL = player.position.x - (b.cx - halfW);
+      const dxR = (b.cx + halfW) - player.position.x;
+      const dzN = player.position.z - (b.cz - halfD);
+      const dzF = (b.cz + halfD) - player.position.z;
+      const m = Math.min(dxL, dxR, dzN, dzF);
+      if (m === dxL) { player.position.x = b.cx - halfW - 0.05; player.velocity.x = Math.min(0, player.velocity.x); }
+      else if (m === dxR) { player.position.x = b.cx + halfW + 0.05; player.velocity.x = Math.max(0, player.velocity.x); }
+      else if (m === dzN) { player.position.z = b.cz - halfD - 0.05; player.velocity.z = Math.min(0, player.velocity.z); }
+      else { player.position.z = b.cz + halfD + 0.05; player.velocity.z = Math.max(0, player.velocity.z); }
+    }
+  }
+}
+
+function tryWebSwing() {
+  // Try web-shot at enemy first if aimed
+  const enemyHit = findEnemyInFront(70, 0.85);
+  if (enemyHit && player.web >= CFG.player.webShotCost) {
+    const from = player.position.clone(); from.y += 1.0;
+    spawnWebShot(from, enemyHit.position.clone().setY(enemyHit.position.y + 1.0));
+    damageEnemy(enemyHit, CFG.player.webShotDamage,
+      enemyHit.position.clone().sub(player.position).setY(0).normalize());
+    enemyHit.webbedT = 1.6;
+    player.web -= CFG.player.webShotCost;
+    return;
+  }
+  // Otherwise try swing
+  if (player.web < 6) return;
+  const ap = findWebAttachPoint();
+  if (ap) {
+    state.webAttach = ap.point.clone();
+    state.webSwingDist = player.position.distanceTo(state.webAttach);
+    // Slight pull-up when initiating swing for that comic-book flow
+    player.swinging = true;
+    if (player.velocity.y < -2) player.velocity.y *= 0.4;
+    showToast('WEB ATTACHED', 800);
+  }
+}
+function releaseWeb() {
+  player.swinging = false;
+  state.webAttach = null;
+  state.webSwingDist = 0;
+}
+
+function doMelee() {
+  // Hit any enemies within range in front
+  const hits = state.enemies.filter(e => {
+    if (e.position.distanceTo(player.position) > CFG.player.meleeRange) return false;
+    const dir = e.position.clone().sub(player.position).normalize();
+    const fwd = new THREE.Vector3(); camera.getWorldDirection(fwd);
+    return dir.dot(fwd) > 0.3;
+  });
+  for (const e of hits) {
+    const knock = e.position.clone().sub(player.position).setY(0).normalize();
+    damageEnemy(e, CFG.player.meleeDamage, knock);
+    cameraShake = Math.max(cameraShake, 0.12);
+  }
+  if (hits.length === 0) {
+    // Whiff swoosh
+  }
+}
+
+// ===================== ENEMY UPDATE =====================
+function updateEnemy(e, dt) {
+  e.aliveT += dt;
+  if (e.flashT > 0) {
+    e.flashT -= dt;
+    e.parts.torso.material.emissiveIntensity = 1.4;
+  } else {
+    e.parts.torso.material.emissiveIntensity = 0.4;
+  }
+  if (e.webbedT > 0) {
+    e.webbedT -= dt;
+    e.parts.torso.material.emissive.setHex(0x4477aa);
+    return; // stunned, no movement / attacks
+  } else {
+    e.parts.torso.material.emissive.setHex(e.config.emissive);
+  }
+
+  const toPlayer = player.position.clone().sub(e.position);
+  const dPlayer = toPlayer.length();
+  toPlayer.normalize();
+
+  // Face player
+  const desiredYaw = Math.atan2(toPlayer.x, toPlayer.z);
+  e.yaw = lerp(e.yaw, desiredYaw, 6 * dt);
+  e.group.rotation.y = e.yaw;
+
+  if (e.type === 'goon' || e.type === 'brute') {
+    // Chase if close enough on ground level
+    if (player.position.y - e.position.y < 6 && dPlayer < 60) {
+      const dir = toPlayer.clone().setY(0).normalize();
+      e.velocity.x = lerp(e.velocity.x, dir.x * e.config.speed, 4 * dt);
+      e.velocity.z = lerp(e.velocity.z, dir.z * e.config.speed, 4 * dt);
+    } else {
+      e.velocity.x = lerp(e.velocity.x, 0, 4 * dt);
+      e.velocity.z = lerp(e.velocity.z, 0, 4 * dt);
+    }
+    // Gravity
+    e.velocity.y -= 32 * dt;
+    e.position.addScaledVector(e.velocity, dt);
+    // Ground
+    if (e.position.y < 0.9) { e.position.y = 0.9; e.velocity.y = 0; }
+    // Walk anim
+    e.walkPhase += dt * (Math.hypot(e.velocity.x, e.velocity.z) * 0.6);
+    e.parts.legL.rotation.x = Math.sin(e.walkPhase) * 0.7;
+    e.parts.legR.rotation.x = -Math.sin(e.walkPhase) * 0.7;
+    e.parts.armL.rotation.x = -Math.sin(e.walkPhase) * 0.5;
+    e.parts.armR.rotation.x = Math.sin(e.walkPhase) * 0.5;
+    // Attack
+    e.cooldown -= dt;
+    if (dPlayer < e.config.range && e.cooldown <= 0) {
+      damagePlayer(e.config.dmg);
+      e.cooldown = e.type === 'brute' ? 1.6 : 1.0;
+      // little forward lunge
+      e.parts.armR.rotation.x = -1.4;
+    }
+  } else if (e.type === 'sniper') {
+    // Stay put on roof; aim & shoot
+    e.velocity.y -= 32 * dt;
+    e.position.y += e.velocity.y * dt;
+    if (e.position.y < e.position.userY) { e.position.y = e.position.userY; e.velocity.y = 0; }
+    // Aim arms toward player
+    const aimAngle = Math.atan2(player.position.y - e.position.y - 1, dPlayer);
+    e.parts.armL.rotation.x = -aimAngle - 0.6;
+    e.parts.armR.rotation.x = -aimAngle - 0.6;
+    e.cooldown -= dt;
+    if (dPlayer < e.config.range && e.cooldown <= 0) {
+      // Spawn projectile (a small sphere homing slightly)
+      spawnSniperShot(e.position.clone().setY(e.position.y + 1.4), player.position.clone().setY(player.position.y + 1.0));
+      e.cooldown = rand(2.4, 3.6);
+    }
+  }
+
+  // bar billboard
+  e.bar.bg.lookAt(camera.position);
+  e.bar.fg.lookAt(camera.position);
+}
+
+// Sniper projectile
+function spawnSniperShot(from, to) {
+  const m = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 8, 8),
+    new THREE.MeshBasicMaterial({ color: 0xff5566 })
+  );
+  m.position.copy(from);
+  scene.add(m);
+  const dir = to.clone().sub(from).normalize();
+  state.effects.push({
+    type: 'projectile', mesh: m, life: 2.5, maxLife: 2.5, vel: dir.multiplyScalar(40),
+    damage: CFG.enemy.sniper.dmg
+  });
+}
+
+// ===================== MISSIONS =====================
+function setMissionUI(title, desc, progressText = '') {
+  dom.missionTitle.textContent = title;
+  dom.missionDesc.textContent = desc;
+  dom.missionProgress.textContent = progressText;
+}
+
+function spawnMissionMarker(position, color = 0x2a9d8f) {
+  const g = new THREE.Group();
+  // Tall beacon
+  const cyl = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.5, 0.5, 28, 12, 1, true),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.45, side: THREE.DoubleSide })
+  );
+  cyl.position.set(0, 14, 0);
+  g.add(cyl);
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(2.5, 0.15, 8, 32),
+    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.8 })
+  );
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.15;
+  g.add(ring);
+  g.position.copy(position);
+  scene.add(g);
+  return g;
+}
+
+const civilianModel = (color = 0x4488dd) => {
+  const g = new THREE.Group();
+  const torso = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.4, 0.4), toonMat({ color }));
+  torso.position.y = 0.7; g.add(torso);
+  const head = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.55, 0.55), toonMat({ color: 0xffd0a8 }));
+  head.position.y = 1.7; g.add(head);
+  const lg = new THREE.BoxGeometry(0.3, 1.2, 0.35);
+  const lm = toonMat({ color: 0x222233 });
+  const ll = new THREE.Mesh(lg, lm); ll.position.set(-0.22, -0.1, 0); g.add(ll);
+  const lr = new THREE.Mesh(lg, lm); lr.position.set( 0.22, -0.1, 0); g.add(lr);
+  return g;
+};
+
+function pickRandomBuildingTop() {
+  const b = pick(state.buildings);
+  return new THREE.Vector3(b.cx, b.top, b.cz);
+}
+function pickRandomGround(margin = 8) {
+  const totalW = CFG.city.blocksX * CFG.city.blockSize;
+  const totalH = CFG.city.blocksZ * CFG.city.blockSize;
+  // Pick ground point that's NOT inside a building
+  for (let tries = 0; tries < 20; tries++) {
+    const x = rand(-totalW/2 + margin, totalW/2 - margin);
+    const z = rand(-totalH/2 + margin, totalH/2 - margin);
+    let inside = false;
+    for (const b of state.buildings) {
+      if (Math.abs(x - b.cx) < b.w/2 + 1 && Math.abs(z - b.cz) < b.d/2 + 1) {
+        inside = true; break;
+      }
+    }
+    if (!inside) return new THREE.Vector3(x, 0.9, z);
+  }
+  return new THREE.Vector3(0, 0.9, 0);
+}
+
+function assignMission(type) {
+  cleanupMission();
+  if (type === 'rescue') {
+    const civilianPos = pickRandomGround(10);
+    const civ = civilianModel(0xffd166);
+    civ.position.copy(civilianPos);
+    scene.add(civ);
+    const marker = spawnMissionMarker(civilianPos.clone());
+    const enemies = [];
+    for (let i = 0; i < 3; i++) {
+      const off = new THREE.Vector3(rand(-6, 6), 0, rand(-6, 6));
+      const e = spawnEnemy('goon', civilianPos.clone().add(off));
+      enemies.push(e); state.enemies.push(e);
+    }
+    state.mission = {
+      type, civilianMesh: civ, civilianPos, marker, enemies,
+      title: 'RESCUE', desc: "Civilian held by Vulture's crew. Take them out and check on the civilian.",
+      onEnemyKilled: () => { updateMissionUI(); },
+      update: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        if (remaining === 0) {
+          // approach civilian
+          if (player.position.distanceTo(civilianPos) < 4.5) {
+            completeMission(800, 'CIVILIAN SAFE');
+            queueStory('ch2_brutes');
+          }
+        }
+      },
+      progressText: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        if (remaining > 0) return `Goons remaining: ${remaining}`;
+        return 'Approach the civilian.';
+      }
+    };
+  } else if (type === 'crime') {
+    const pos = pickRandomGround(15);
+    const marker = spawnMissionMarker(pos.clone(), 0xe63946);
+    const enemies = [];
+    for (let i = 0; i < 4; i++) {
+      const t = i < 3 ? 'goon' : 'brute';
+      const off = new THREE.Vector3(rand(-8, 8), 0, rand(-8, 8));
+      const e = spawnEnemy(t, pos.clone().add(off));
+      enemies.push(e); state.enemies.push(e);
+    }
+    state.mission = {
+      type, pos, marker, enemies,
+      title: 'STOP THE ROBBERY', desc: 'Crew lifting goods from the docks. Crash the party.',
+      update: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        if (remaining === 0) {
+          completeMission(1500, 'JOB DONE');
+          queueStory('ch3_defend');
+        }
+      },
+      progressText: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        return `Hostiles remaining: ${remaining}`;
+      }
+    };
+  } else if (type === 'defend') {
+    const pos = pickRandomGround(20);
+    const marker = spawnMissionMarker(pos.clone(), 0xffaa3a);
+    // Spawn civilians
+    const civilians = [];
+    for (let i = 0; i < 4; i++) {
+      const c = civilianModel(pick([0x4488dd, 0xff8866, 0xaaffaa, 0xddccff]));
+      c.position.copy(pos.clone().add(new THREE.Vector3(rand(-3,3), 0, rand(-3,3))));
+      scene.add(c);
+      civilians.push(c);
+    }
+    state.mission = {
+      type, pos, marker, civilians,
+      title: 'DEFEND THE PLAZA', desc: 'Civilians on the ground. Hold off three waves.',
+      wave: 0, totalWaves: 3, waveActive: false, waveDelay: 2,
+      enemies: [],
+      update: function() {
+        if (!this.waveActive && this.wave < this.totalWaves) {
+          this.waveDelay -= state.dt;
+          if (this.waveDelay <= 0) {
+            this.wave++;
+            this.waveActive = true;
+            const count = 3 + this.wave;
+            for (let i = 0; i < count; i++) {
+              const ang = rand(0, TAU);
+              const r = rand(20, 35);
+              const ep = pos.clone().add(new THREE.Vector3(Math.cos(ang)*r, 0, Math.sin(ang)*r));
+              const t = (i % 4 === 3) ? 'brute' : 'goon';
+              const e = spawnEnemy(t, ep);
+              this.enemies.push(e); state.enemies.push(e);
+            }
+            showToast(`WAVE ${this.wave} / ${this.totalWaves}`, 1800);
+          }
+        } else if (this.waveActive) {
+          const remaining = this.enemies.filter(e => state.enemies.includes(e)).length;
+          if (remaining === 0) {
+            this.waveActive = false;
+            this.waveDelay = 3;
+            if (this.wave >= this.totalWaves) {
+              completeMission(2500, 'PLAZA HELD');
+              queueStory('ch_final');
+            }
+          }
+        }
+      },
+      progressText: function() {
+        const remaining = this.enemies.filter(e => state.enemies.includes(e)).length;
+        return `Wave ${this.wave}/${this.totalWaves} · Hostiles: ${remaining}`;
+      }
+    };
+  } else if (type === 'boss') {
+    // Final showdown — multiple lieutenants (mix), then a "boss" brute with high HP
+    const center = pickRandomGround(25);
+    const marker = spawnMissionMarker(center.clone(), 0xff2222);
+    const enemies = [];
+    for (let i = 0; i < 6; i++) {
+      const t = pick(['goon','goon','brute','sniper']);
+      const ang = rand(0, TAU);
+      const r = rand(8, 18);
+      const pos = center.clone().add(new THREE.Vector3(Math.cos(ang)*r, 0, Math.sin(ang)*r));
+      if (t === 'sniper') {
+        // place on nearest building roof
+        let nearestB = null, bd = Infinity;
+        for (const b of state.buildings) {
+          const d = Math.hypot(b.cx - center.x, b.cz - center.z);
+          if (d < bd) { bd = d; nearestB = b; }
+        }
+        if (nearestB) {
+          pos.set(nearestB.cx + rand(-3,3), nearestB.top + 0.05, nearestB.cz + rand(-3,3));
+        }
+      }
+      const e = spawnEnemy(t, pos);
+      if (t === 'sniper') { e.position.userY = e.position.y; e.velocity.y = 0; }
+      enemies.push(e); state.enemies.push(e);
+    }
+    // Big brute boss
+    const boss = spawnEnemy('brute', center.clone());
+    boss.maxHp = 400; boss.hp = 400; boss.config = { ...boss.config, score: 2500, dmg: 26, speed: 4.6 };
+    boss.group.scale.set(1.3, 1.3, 1.3);
+    boss.bar.fg.material.color.setHex(0xff2222);
+    enemies.push(boss); state.enemies.push(boss);
+    state.mission = {
+      type, center, marker, enemies,
+      title: 'KINGPIN\'S LIEUTENANTS', desc: 'Take them all down. End this tonight.',
+      update: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        if (remaining === 0) {
+          completeMission(8000, 'CITY IS YOURS');
+          state.score += 5000; // bonus
+          showFinaleText();
+        }
+      },
+      progressText: () => {
+        const remaining = enemies.filter(e => state.enemies.includes(e)).length;
+        return `Lieutenants remaining: ${remaining}`;
+      }
+    };
+  }
+  if (state.mission) {
+    setMissionUI(state.mission.title, state.mission.desc, state.mission.progressText?.() || '');
+    showToast(state.mission.title, 1800);
+  }
+}
+
+function updateMissionUI() {
+  if (!state.mission) return;
+  setMissionUI(state.mission.title, state.mission.desc, state.mission.progressText?.() || '');
+}
+
+function completeMission(score, label) {
+  state.score += score;
+  showFloatScore(`+${score} ${label}`, player.position);
+  showToast(`${label}  +${score}`, 2400);
+  state.multiplier = Math.min(5, state.multiplier + 1);
+  cleanupMission();
+  setMissionUI('PATROL', 'Awaiting next call.', `Multiplier: x${state.multiplier}`);
+}
+
+function cleanupMission() {
+  if (!state.mission) return;
+  const m = state.mission;
+  if (m.marker) scene.remove(m.marker);
+  if (m.civilianMesh) scene.remove(m.civilianMesh);
+  if (m.civilians) m.civilians.forEach(c => scene.remove(c));
+  state.mission = null;
+}
+
+let finaleShown = false;
+function showFinaleText() {
+  if (finaleShown) return;
+  finaleShown = true;
+  state.storyQueue = [
+    { speaker: 'DISPATCH', text: 'It\'s quiet. For now. Streets look... actually safe.' },
+    { speaker: 'MJ', text: 'Come home. The pizza\'s getting cold.' },
+    { speaker: 'SPIDER', text: 'On my way. Save me a slice.', after: () => {
+      setMissionUI('PATROL', 'You earned a break.', 'Ride the rooftops. Free play.');
+      showToast('FREE PATROL UNLOCKED', 3000);
+    }}
+  ];
+  state.storyActive = true;
+  showDialog(state.storyQueue[0].speaker, state.storyQueue[0].text);
+}
+
+// ===================== CHALLENGES =====================
+function tryStartChallenge() {
+  if (state.challenge) {
+    showToast('CHALLENGE ACTIVE', 1200); return;
+  }
+  // Build 6 checkpoints across rooftops
+  const points = [];
+  const meshes = [];
+  for (let i = 0; i < 6; i++) {
+    const top = pickRandomBuildingTop();
+    top.y += 4;
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(2.4, 0.3, 8, 24),
+      new THREE.MeshBasicMaterial({ color: 0xffd166, transparent: true, opacity: 0.85 })
+    );
+    ring.position.copy(top);
+    scene.add(ring);
+    points.push(top);
+    meshes.push(ring);
+  }
+  state.challenge = {
+    points, meshes, idx: 0,
+    timeLeft: 60, total: 60,
+  };
+  dom.challengeBox.style.display = 'block';
+  showToast('CHALLENGE: TIME TRIAL', 2000);
+}
+
+function updateChallenge(dt) {
+  const c = state.challenge;
+  if (!c) return;
+  c.timeLeft -= dt;
+  // Color the active ring brighter
+  c.meshes.forEach((m, i) => {
+    m.material.opacity = i === c.idx ? 1.0 : 0.25;
+    m.rotation.z += dt * 1.4;
+    if (i === c.idx) m.scale.setScalar(1 + Math.sin(state.time * 6) * 0.08);
+    else m.scale.setScalar(1);
+  });
+  // Check pickup
+  if (player.position.distanceTo(c.points[c.idx]) < 3.5) {
+    spawnPoof(c.points[c.idx], 0xffd166, 22);
+    scene.remove(c.meshes[c.idx]);
+    c.idx++;
+    state.score += 200;
+    showFloatScore('+200', c.points[c.idx - 1]);
+    if (c.idx >= c.points.length) {
+      const bonus = Math.round(c.timeLeft) * 50;
+      state.score += bonus;
+      showToast(`CHALLENGE COMPLETE  +${bonus}`, 2600);
+      // cleanup
+      c.meshes.forEach(m => scene.remove(m));
+      state.challenge = null;
+      dom.challengeBox.style.display = 'none';
+      return;
+    }
+  }
+  if (c.timeLeft <= 0) {
+    showToast('CHALLENGE FAILED', 2000);
+    c.meshes.forEach(m => scene.remove(m));
+    state.challenge = null;
+    dom.challengeBox.style.display = 'none';
+    return;
+  }
+  dom.challengeTime.textContent = c.timeLeft.toFixed(1);
+  dom.challengeProgress.textContent = `${c.idx}/${c.points.length}`;
+}
+
+// ===================== CAMERA =====================
+let cameraShake = 0;
+function updateCamera(dt) {
+  // 3rd person follow with mouse-controlled yaw/pitch
+  const targetPos = player.position.clone().add(CFG.cam.lookOffset);
+  const cosP = Math.cos(player.pitch), sinP = Math.sin(player.pitch);
+  const cosY = Math.cos(player.yaw),   sinY = Math.sin(player.yaw);
+  const offset = new THREE.Vector3(
+    sinY * cosP * 9,
+    -sinP * 9 + 4.5,
+    cosY * cosP * 9
+  );
+  const desired = targetPos.clone().add(offset);
+  // Lerp toward desired
+  camera.position.lerp(desired, CFG.cam.lerp);
+  // Camera shake
+  if (cameraShake > 0) {
+    camera.position.x += rand(-1, 1) * cameraShake;
+    camera.position.y += rand(-1, 1) * cameraShake;
+    cameraShake = Math.max(0, cameraShake - dt * 1.5);
+  }
+  camera.lookAt(targetPos);
+  // Update crosshair color when aimed at enemy
+  const aimed = findEnemyInFront(80, 0.92);
+  if (aimed) dom.crosshair.classList.add('crosshair-target');
+  else dom.crosshair.classList.remove('crosshair-target');
+}
+
+// ===================== EFFECTS UPDATE =====================
+function updateEffects(dt) {
+  for (let i = state.effects.length - 1; i >= 0; i--) {
+    const fx = state.effects[i];
+    fx.life -= dt;
+    if (fx.type === 'poof') {
+      const arr = fx.geo.attributes.position.array;
+      for (let j = 0; j < fx.vel.length; j++) {
+        const v = fx.vel[j];
+        v.y -= 18 * dt;
+        arr[j*3]   += v.x * dt;
+        arr[j*3+1] += v.y * dt;
+        arr[j*3+2] += v.z * dt;
+      }
+      fx.geo.attributes.position.needsUpdate = true;
+      fx.mesh.material.opacity = clamp(fx.life / fx.maxLife, 0, 1);
+    } else if (fx.type === 'tracer') {
+      fx.mesh.material.opacity = clamp(fx.life / fx.maxLife, 0, 1);
+    } else if (fx.type === 'float') {
+      fx.mesh.position.y += dt * 1.5;
+      fx.mesh.material.opacity = clamp(fx.life / fx.maxLife, 0, 1);
+    } else if (fx.type === 'projectile') {
+      fx.mesh.position.addScaledVector(fx.vel, dt);
+      // Hit player check
+      if (fx.mesh.position.distanceTo(player.position) < 1.4) {
+        damagePlayer(fx.damage || 8);
+        fx.life = 0;
+      }
+    }
+    if (fx.life <= 0) {
+      scene.remove(fx.mesh);
+      state.effects.splice(i, 1);
+    }
+  }
+}
+
+// ===================== AMBIENT ENEMY SPAWNING =====================
+function maybeSpawnAmbientEnemy() {
+  if (state.enemies.length > 12) return;
+  if (Math.random() < 0.005) {
+    const pos = pickRandomGround(20);
+    if (pos.distanceTo(player.position) > 35 && pos.distanceTo(player.position) < 90) {
+      const t = pick(['goon', 'goon', 'brute']);
+      const e = spawnEnemy(t, pos);
+      state.enemies.push(e);
+    }
+  }
+  // Sometimes a sniper on a roof near player
+  if (Math.random() < 0.0025 && state.enemies.filter(e => e.type === 'sniper').length < 2) {
+    let nearest = null, bestD = Infinity;
+    for (const b of state.buildings) {
+      const d = Math.hypot(b.cx - player.position.x, b.cz - player.position.z);
+      if (d > 30 && d < 80 && d < bestD) { bestD = d; nearest = b; }
+    }
+    if (nearest) {
+      const pos = new THREE.Vector3(
+        nearest.cx + rand(-3, 3), nearest.top + 0.05, nearest.cz + rand(-3, 3)
+      );
+      const e = spawnEnemy('sniper', pos);
+      e.position.userY = pos.y;
+      state.enemies.push(e);
+    }
+  }
+}
+
+// ===================== PAUSE / GAME LOOP =====================
+function togglePause() {
+  if (!state.running || state.gameOver) return;
+  state.paused = !state.paused;
+  dom.pauseScreen.style.display = state.paused ? 'flex' : 'none';
+  if (state.paused) document.exitPointerLock?.();
+}
+
+let lastTime = performance.now();
+function loop(now) {
+  requestAnimationFrame(loop);
+  if (!state.running || state.paused || state.gameOver) {
+    renderer.render(scene, camera);
+    return;
+  }
+  const dt = Math.min(0.05, (now - lastTime) / 1000);
+  lastTime = now;
+  state.dt = dt;
+  state.time += dt;
+
+  if (!state.storyActive) {
+    updatePlayer(dt);
+  }
+  for (const e of state.enemies) updateEnemy(e, dt);
+  updateEffects(dt);
+  if (state.mission && !state.storyActive) {
+    state.mission.update?.();
+    setMissionUI(state.mission.title, state.mission.desc,
+      state.mission.progressText?.() || '');
+  }
+  if (state.challenge) updateChallenge(dt);
+  if (!state.storyActive) maybeSpawnAmbientEnemy();
+  updateCamera(dt);
+  updateHUD();
+
+  if (state.notifyToast.t > 0) {
+    state.notifyToast.t -= dt * 1000;
+    if (state.notifyToast.t <= 0) dom.toast.classList.remove('show');
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ===================== INIT =====================
+buildCity();
+// place player at a high vantage
+player.position.set(0, 70, 60);
+
+// Wire start
+dom.startBtn.addEventListener('click', () => {
+  dom.splash.classList.add('fadeout');
+  setTimeout(() => { dom.splash.style.display = 'none'; }, 800);
+  state.running = true;
+  setTimeout(() => queueStory('ch1_open'), 600);
+  renderer.domElement.requestPointerLock();
+});
+
+requestAnimationFrame(loop);
+
+// Hint pop after a moment
+setTimeout(() => {
+  if (state.running && !state.storyActive) showToast('CLICK CANVAS TO LOCK MOUSE', 2600);
+}, 2000);
+
+</script>
+</body>
+</html>
