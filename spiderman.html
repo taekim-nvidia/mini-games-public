@@ -955,9 +955,11 @@ function step(dt){
   // Camera
   let camLookX = P.vx*8; if(P.swinging) camLookX = Math.cos(P.angle)*P.L*P.angVel*8;
   G.cam.tx = P.x - W/(2*DPR) + camLookX;
-  G.cam.ty = P.y - H/(2*DPR) - 60;
+  // Center player on Y (slightly above middle for look-down headroom)
+  G.cam.ty = P.y - H/(2*DPR) * 1.15;
   G.cam.tx = Math.max(0, Math.min(G.worldW - W/DPR, G.cam.tx));
-  G.cam.ty = Math.max(-100, Math.min(G.ground - H/DPR + 60, G.cam.ty));
+  // Only clamp top — let camera follow player Y freely on tall viewports.
+  G.cam.ty = Math.max(-300, G.cam.ty);
   G.cam.x += (G.cam.tx - G.cam.x) * Math.min(1, 5*sdt);
   G.cam.y += (G.cam.ty - G.cam.y) * Math.min(1, 5*sdt);
   if(G.shake>0){ G.shake -= sdt; if(G.shake<0) G.shake=0; }
@@ -1423,10 +1425,10 @@ function drawBuildings(off){
 }
 
 function drawStreet(off){
-  const sw = W/DPR;
+  const sw = W/DPR, sh = H/DPR;
   const sy = G.ground - off.y;
   ctx.fillStyle = '#1a0a1a';
-  ctx.fillRect(0, sy|0, sw, 200);
+  ctx.fillRect(0, sy|0, sw, Math.max(200, sh - sy + 50));
   // road dashes
   ctx.fillStyle = '#3a223a';
   for(let x = -((off.x|0)%40); x < sw; x += 40) ctx.fillRect(x, sy+30, 24, 3);
