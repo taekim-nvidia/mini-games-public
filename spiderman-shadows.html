@@ -95,6 +95,43 @@
     background: transparent; color: #fff; border: 2px solid #fff; cursor: pointer;
     letter-spacing: 4px; text-transform: uppercase; pointer-events: auto;}
   .restartBtn:hover { background: #fff; color: #000; }
+
+  /* ============ MOBILE TOUCH UI ============ */
+  #mobileUI { position: fixed; inset: 0; pointer-events: none; z-index: 6; display: none; }
+  body.touch #mobileUI { display: block; }
+  body.touch #controls { display: none; }
+  body.touch #crosshair { opacity: 0.45; }
+  #joyArea { position: absolute; left: 24px; bottom: 24px; width: 150px; height: 150px;
+    background: rgba(255,255,255,0.06); border: 2px solid rgba(255,255,255,0.18);
+    border-radius: 50%; pointer-events: auto; touch-action: none; }
+  #joyKnob { position: absolute; left: 75px; top: 75px; width: 56px; height: 56px;
+    background: rgba(255,255,255,0.28); border: 2px solid #fff; border-radius: 50%;
+    transform: translate(-50%, -50%); pointer-events: none;
+    box-shadow: 0 0 12px rgba(0,0,0,0.6); transition: background 0.1s; }
+  #camArea { position: absolute; right: 0; top: 100px; width: 55%; height: 60%;
+    pointer-events: auto; touch-action: none; }
+  .actBtn { position: absolute; border-radius: 50%; pointer-events: auto;
+    color: #fff; font-weight: 800; letter-spacing: 1px; font-size: 11px;
+    display: flex; align-items: center; justify-content: center; user-select: none;
+    touch-action: none; -webkit-tap-highlight-color: transparent;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5); text-align: center; line-height: 1.1; }
+  .actBtn.held { transform: scale(0.9); filter: brightness(1.4); }
+  #btnJump   { right: 30px; bottom: 130px; width: 84px; height: 84px;
+    background: rgba(220,40,60,0.55); border: 2px solid #e63946; }
+  #btnWeb    { right: 122px; bottom: 90px; width: 80px; height: 80px;
+    background: rgba(80,160,230,0.55); border: 2px solid #5ea7e0; }
+  #btnPunch  { right: 30px; bottom: 30px; width: 78px; height: 78px;
+    background: rgba(255,150,40,0.5); border: 2px solid #ffaa3a; }
+  #btnZip    { right: 142px; bottom: 184px; width: 64px; height: 64px;
+    background: rgba(120,200,180,0.5); border: 2px solid #6dd0bd; }
+  #btnFinish { right: 96px; bottom: 268px; width: 64px; height: 64px;
+    background: rgba(255,209,102,0.55); border: 2px solid #ffd166; color: #000; }
+  #btnDodge  { right: 222px; bottom: 60px; width: 64px; height: 64px;
+    background: rgba(160,160,200,0.45); border: 2px solid #ddd; }
+  #btnPause  { right: 18px; top: 18px; width: 48px; height: 48px;
+    background: rgba(0,0,0,0.55); border: 2px solid #888; font-size: 16px; }
+  #btnChal   { right: 18px; top: 78px; width: 48px; height: 48px;
+    background: rgba(0,0,0,0.55); border: 2px solid #ffd166; color: #ffd166; font-size: 16px; }
 </style>
 </head>
 <body>
@@ -162,6 +199,19 @@
 </div>
 
 <canvas id="game"></canvas>
+
+<div id="mobileUI">
+  <div id="joyArea"><div id="joyKnob"></div></div>
+  <div id="camArea"></div>
+  <div id="btnJump"   class="actBtn">JUMP</div>
+  <div id="btnWeb"    class="actBtn">WEB</div>
+  <div id="btnPunch"  class="actBtn">PUNCH</div>
+  <div id="btnZip"    class="actBtn">ZIP</div>
+  <div id="btnFinish" class="actBtn">FIN</div>
+  <div id="btnDodge"  class="actBtn">DODGE</div>
+  <div id="btnPause"  class="actBtn">II</div>
+  <div id="btnChal"   class="actBtn">R</div>
+</div>
 
 <script type="importmap">
 {
@@ -302,10 +352,122 @@ document.addEventListener('keydown', (e) => {
 document.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
 renderer.domElement.addEventListener('click', () => {
-  if (state.running && !state.paused && !state.storyActive && !pointerLocked) {
+  if (state.running && !state.paused && !state.storyActive && !pointerLocked && !isTouchDevice) {
     renderer.domElement.requestPointerLock();
   }
 });
+
+// ===================== TOUCH / MOBILE =====================
+let isTouchDevice = false;
+function enableTouchUI() {
+  if (isTouchDevice) return;
+  isTouchDevice = true;
+  document.body.classList.add('touch');
+}
+window.addEventListener('touchstart', enableTouchUI, { once: true, passive: true });
+if (('ontouchstart' in window) || (navigator.maxTouchPoints > 0)) {
+  enableTouchUI();
+}
+
+// Joystick state
+const joy = { active: false, id: null, cx: 0, cy: 0, dx: 0, dy: 0, mag: 0 };
+const joyArea = document.getElementById('joyArea');
+const joyKnob = document.getElementById('joyKnob');
+const joyMaxR = 60;
+
+function joyStart(t) {
+  if (joy.active) return;
+  const r = joyArea.getBoundingClientRect();
+  joy.cx = r.left + r.width / 2; joy.cy = r.top + r.height / 2;
+  joy.active = true; joy.id = t.identifier;
+  joyMove(t);
+}
+function joyMove(t) {
+  let dx = t.clientX - joy.cx, dy = t.clientY - joy.cy;
+  const m = Math.hypot(dx, dy);
+  if (m > joyMaxR) { dx = dx / m * joyMaxR; dy = dy / m * joyMaxR; }
+  joy.dx = dx; joy.dy = dy; joy.mag = Math.min(1, m / joyMaxR);
+  joyKnob.style.left = (75 + dx) + 'px';
+  joyKnob.style.top  = (75 + dy) + 'px';
+  // Map to virtual WASD keys
+  const t1 = 0.35;
+  const nx = dx / joyMaxR, ny = dy / joyMaxR;
+  keys['KeyW'] = ny < -t1;
+  keys['KeyS'] = ny > t1;
+  keys['KeyD'] = nx > t1;
+  keys['KeyA'] = nx < -t1;
+}
+function joyEnd() {
+  joy.active = false; joy.id = null; joy.dx = 0; joy.dy = 0; joy.mag = 0;
+  joyKnob.style.left = '75px'; joyKnob.style.top = '75px';
+  keys['KeyW'] = keys['KeyA'] = keys['KeyS'] = keys['KeyD'] = false;
+}
+joyArea.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) { joyStart(t); break; }
+}, { passive: false });
+joyArea.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) if (t.identifier === joy.id) joyMove(t);
+}, { passive: false });
+joyArea.addEventListener('touchend', e => {
+  for (const t of e.changedTouches) if (t.identifier === joy.id) joyEnd();
+}, { passive: false });
+joyArea.addEventListener('touchcancel', joyEnd, { passive: false });
+
+// Camera-look area
+const camArea = document.getElementById('camArea');
+const camTouches = new Map();
+camArea.addEventListener('touchstart', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) camTouches.set(t.identifier, { x: t.clientX, y: t.clientY });
+}, { passive: false });
+camArea.addEventListener('touchmove', e => {
+  e.preventDefault();
+  for (const t of e.changedTouches) {
+    const last = camTouches.get(t.identifier);
+    if (last) {
+      mouse.dx += (t.clientX - last.x) * 1.6;
+      mouse.dy += (t.clientY - last.y) * 1.6;
+      last.x = t.clientX; last.y = t.clientY;
+    }
+  }
+}, { passive: false });
+function camTouchEnd(e) {
+  for (const t of e.changedTouches) camTouches.delete(t.identifier);
+}
+camArea.addEventListener('touchend', camTouchEnd, { passive: false });
+camArea.addEventListener('touchcancel', camTouchEnd, { passive: false });
+
+// Action button binder
+function bindButton(id, opts) {
+  const el = document.getElementById(id);
+  const setHeld = v => { if (v) el.classList.add('held'); else el.classList.remove('held'); };
+  el.addEventListener('touchstart', e => {
+    e.preventDefault(); e.stopPropagation();
+    setHeld(true);
+    if (opts.onPress) opts.onPress();
+    if (opts.holdKey) keys[opts.holdKey] = true;
+    if (opts.holdMouseLmb) mouse.lmb = true;
+    if (opts.holdMouseRmb) mouse.rmb = true;
+  }, { passive: false });
+  const release = () => {
+    setHeld(false);
+    if (opts.holdKey) keys[opts.holdKey] = false;
+    if (opts.holdMouseLmb) mouse.lmb = false;
+  };
+  el.addEventListener('touchend',    e => { e.preventDefault(); release(); }, { passive: false });
+  el.addEventListener('touchcancel', e => { release(); }, { passive: false });
+}
+
+bindButton('btnJump',   { holdKey: 'Space' });
+bindButton('btnWeb',    { holdMouseLmb: true });
+bindButton('btnPunch',  { onPress: () => { mouse.rmb = true; } });
+bindButton('btnZip',    { onPress: () => { keys['KeyE'] = true; setTimeout(() => keys['KeyE'] = false, 100); } });
+bindButton('btnFinish', { onPress: () => { keys['KeyF'] = true; setTimeout(() => keys['KeyF'] = false, 100); } });
+bindButton('btnDodge',  { holdKey: 'ShiftLeft' });
+bindButton('btnPause',  { onPress: () => togglePause() });
+bindButton('btnChal',   { onPress: () => tryStartChallenge() });
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = (document.pointerLockElement === renderer.domElement);
 });
