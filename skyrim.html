@@ -87,6 +87,72 @@
     color: #ffd27a; font-size: 14px; text-shadow: 1px 1px 3px #000;
     pointer-events: none; display: none; z-index: 60;
   }
+
+  /* ---------- Mobile controls (hidden by default) ---------- */
+  .mobile-only { display: none; }
+  body.mobile .mobile-only { display: block; }
+  body.mobile .desktop-only { display: none; }
+
+  body.mobile canvas,
+  body.mobile #hud,
+  body.mobile #mobileControls { touch-action: none; -webkit-user-select: none; user-select: none; }
+
+  /* dim the desktop crosshair on mobile — useless without aim */
+  body.mobile #crosshair { opacity: 0.35; transform: translate(-50%, -50%) scale(0.6); }
+
+  #mobileControls {
+    position: fixed; inset: 0;
+    pointer-events: none; /* children re-enable */
+    z-index: 70;
+    display: none;
+  }
+  body.mobile #mobileControls.active { display: block; }
+
+  #joystickBase {
+    position: fixed;
+    left: 28px; bottom: 28px;
+    width: 120px; height: 120px;
+    border-radius: 50%;
+    background: rgba(20, 28, 40, 0.45);
+    border: 2px solid rgba(140, 170, 210, 0.5);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joystickKnob {
+    position: absolute;
+    left: 30px; top: 30px;
+    width: 60px; height: 60px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #6b88b0, #2a3a52);
+    border: 2px solid rgba(200, 220, 240, 0.7);
+    pointer-events: none;
+    transition: background 0.1s;
+  }
+
+  .mob-btn {
+    position: fixed;
+    right: 24px;
+    width: 70px; height: 70px;
+    border-radius: 50%;
+    background: rgba(20, 28, 40, 0.55);
+    border: 2px solid rgba(140, 170, 210, 0.6);
+    color: #e8eef8;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    font-family: inherit;
+    pointer-events: auto;
+    touch-action: none;
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.08s, background 0.15s, opacity 0.2s;
+    user-select: none;
+  }
+  .mob-btn .emoji { font-size: 28px; line-height: 1; }
+  .mob-btn .label { font-size: 9px; letter-spacing: 1px; margin-top: 2px; color: #b8c5d6; }
+  .mob-btn.pressed { transform: scale(0.88); background: rgba(74, 106, 146, 0.7); }
+  .mob-btn.disabled { opacity: 0.4; }
+
+  #btnSword { bottom: 30px; }
+  #btnShout { bottom: 115px; right: 100px; }
+  #btnJump  { bottom: 115px; }
 </style>
 </head>
 <body>
@@ -94,15 +160,23 @@
 <div id="title">
   <h1>SKYRIM</h1>
   <h2>(но через нейронку)</h2>
-  <div class="instr">
+  <div class="instr desktop-only">
     <span>WASD</span> — движение<br>
     <span>Мышь</span> — обзор<br>
     <span>ЛКМ</span> — меч<br>
     <span>F</span> — Фус Ро Да<br>
     <span>Пробел</span> — прыжок
   </div>
+  <div class="instr mobile-only">
+    <span>Левый джойстик</span> — движение<br>
+    <span>Правый палец</span> — обзор (свайп)<br>
+    <span>🗡 МЕЧ</span> — атака<br>
+    <span>🌀 ФУС РО ДА</span> — крик<br>
+    <span>⤴ ПРЫЖОК</span>
+  </div>
   <button id="startBtn">НАЧАТЬ</button>
-  <div class="platform">только PC · кликни, чтобы захватить курсор</div>
+  <div class="platform desktop-only">PC + Mobile · кликни, чтобы захватить курсор</div>
+  <div class="platform mobile-only">PC + Mobile · тапни, чтобы начать</div>
 </div>
 
 <div id="hud">
@@ -115,6 +189,13 @@
 </div>
 
 <div id="hint"></div>
+
+<div id="mobileControls">
+  <div id="joystickBase"><div id="joystickKnob"></div></div>
+  <button class="mob-btn" id="btnJump"  type="button"><span class="emoji">⤴</span><span class="label">JUMP</span></button>
+  <button class="mob-btn" id="btnShout" type="button"><span class="emoji">🌀</span><span class="label">SHOUT</span></button>
+  <button class="mob-btn" id="btnSword" type="button"><span class="emoji">🗡</span><span class="label">SWORD</span></button>
+</div>
 
 <div id="win">
   <h1>DOVAHKIIN!</h1>
@@ -163,6 +244,15 @@ const shoutFill = document.getElementById('shoutFill');
 const scoreEl = document.getElementById('score');
 const hintEl = document.getElementById('hint');
 
+// -------- Mobile detection & state --------
+const IS_MOBILE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+// Virtual joystick state — normalized [-1..1]
+const mobileMove = { x: 0, y: 0 };
+// Per-pointer tracking: id -> { kind: 'joystick'|'look'|'button', ... }
+const activePointers = new Map();
+let joystickRect = null; // cached rect of joystick base for active drag
+const JOY_RADIUS = 50; // max knob displacement in px (base is 120 → center offset 30 → 60 wide so ~50 travel)
+
 // -------- Init --------
 function init() {
   scene = new THREE.Scene();
@@ -206,6 +296,8 @@ function init() {
   document.addEventListener('pointerlockchange', () => {
     pointerLocked = document.pointerLockElement === renderer.domElement;
   });
+
+  if (IS_MOBILE) setupMobileControls();
 
   animate();
 }
@@ -607,6 +699,151 @@ function showHint(text, seconds) {
   showHint._t = setTimeout(() => { hintEl.style.display = 'none'; }, seconds * 1000);
 }
 
+// -------- Action helpers (shared by desktop + mobile) --------
+function trySwordSwing() {
+  if (!gameStarted) return;
+  if (!swordSwinging) {
+    swordSwinging = true;
+    swordSwingT = 0;
+    playSwordSwoosh();
+  }
+}
+function tryJump() {
+  if (!gameStarted) return;
+  if (player.onGround) {
+    player.vel.y = 7;
+    player.onGround = false;
+  }
+}
+
+// -------- Mobile UI setup --------
+function setupMobileControls() {
+  document.body.classList.add('mobile');
+  const mc = document.getElementById('mobileControls');
+  const base = document.getElementById('joystickBase');
+  const knob = document.getElementById('joystickKnob');
+  const btnSword = document.getElementById('btnSword');
+  const btnShout = document.getElementById('btnShout');
+  const btnJump  = document.getElementById('btnJump');
+
+  // Prevent default touch behaviors that would scroll / zoom the page.
+  const swallow = (e) => { e.preventDefault(); };
+  document.addEventListener('touchmove', (e) => {
+    if (gameStarted) e.preventDefault();
+  }, { passive: false });
+  document.addEventListener('gesturestart', swallow);
+
+  // ----- Joystick -----
+  function setKnob(dx, dy) {
+    const len = Math.hypot(dx, dy);
+    let clx = dx, cly = dy;
+    if (len > JOY_RADIUS) {
+      clx = (dx / len) * JOY_RADIUS;
+      cly = (dy / len) * JOY_RADIUS;
+    }
+    // knob default top:30, left:30 (centered in 120 base with 60 knob); add offset
+    knob.style.left = (30 + clx) + 'px';
+    knob.style.top  = (30 + cly) + 'px';
+    mobileMove.x = clx / JOY_RADIUS;
+    mobileMove.y = -cly / JOY_RADIUS; // screen y down = backward, so invert
+  }
+  function resetKnob() {
+    knob.style.left = '30px';
+    knob.style.top  = '30px';
+    mobileMove.x = 0;
+    mobileMove.y = 0;
+  }
+
+  base.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    // Only one joystick touch at a time
+    for (const v of activePointers.values()) if (v.kind === 'joystick') return;
+    joystickRect = base.getBoundingClientRect();
+    const cx = joystickRect.left + joystickRect.width / 2;
+    const cy = joystickRect.top + joystickRect.height / 2;
+    activePointers.set(e.pointerId, { kind: 'joystick', cx, cy });
+    setKnob(e.clientX - cx, e.clientY - cy);
+    try { base.setPointerCapture(e.pointerId); } catch (_) {}
+  });
+
+  // ----- Look (right side of screen) -----
+  // Listen on document so any touch in the look zone is captured.
+  document.addEventListener('pointerdown', (e) => {
+    if (!IS_MOBILE || !gameStarted) return;
+    if (e.pointerType !== 'touch' && e.pointerType !== 'pen') return;
+    // Ignore if the touch hit a control element (joystick / button).
+    const target = e.target;
+    if (target && target.closest && (target.closest('#joystickBase') || target.closest('.mob-btn'))) return;
+    // Right half of screen only.
+    if (e.clientX < window.innerWidth / 2) return;
+    activePointers.set(e.pointerId, { kind: 'look', lastX: e.clientX, lastY: e.clientY });
+  }, { passive: true });
+
+  document.addEventListener('pointermove', (e) => {
+    const p = activePointers.get(e.pointerId);
+    if (!p) return;
+    if (p.kind === 'joystick') {
+      e.preventDefault();
+      setKnob(e.clientX - p.cx, e.clientY - p.cy);
+    } else if (p.kind === 'look') {
+      const dx = e.clientX - p.lastX;
+      const dy = e.clientY - p.lastY;
+      p.lastX = e.clientX;
+      p.lastY = e.clientY;
+      const sens = 0.005; // slightly higher than mouse for touch comfort
+      yaw -= dx * sens;
+      pitch -= dy * sens;
+      pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+    }
+  }, { passive: false });
+
+  function endPointer(e) {
+    const p = activePointers.get(e.pointerId);
+    if (!p) return;
+    if (p.kind === 'joystick') resetKnob();
+    activePointers.delete(e.pointerId);
+  }
+  document.addEventListener('pointerup', endPointer);
+  document.addEventListener('pointercancel', endPointer);
+  document.addEventListener('pointerleave', endPointer);
+
+  // ----- Action buttons -----
+  function wireButton(btn, onPress) {
+    btn.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (btn.classList.contains('disabled')) return;
+      btn.classList.add('pressed');
+      activePointers.set(e.pointerId, { kind: 'button', el: btn });
+      onPress();
+    });
+    const release = (e) => {
+      const p = activePointers.get(e.pointerId);
+      if (p && p.kind === 'button') {
+        p.el.classList.remove('pressed');
+        activePointers.delete(e.pointerId);
+      } else {
+        btn.classList.remove('pressed');
+      }
+    };
+    btn.addEventListener('pointerup', release);
+    btn.addEventListener('pointercancel', release);
+    btn.addEventListener('pointerleave', (e) => { btn.classList.remove('pressed'); });
+    // Prevent the synthetic click from bubbling oddly.
+    btn.addEventListener('click', (e) => { e.preventDefault(); });
+  }
+
+  wireButton(btnSword, trySwordSwing);
+  wireButton(btnShout, () => { if (shoutCooldown <= 0) tryShout(); });
+  wireButton(btnJump,  tryJump);
+
+  // Periodically reflect shout cooldown on the button.
+  setInterval(() => {
+    if (shoutCooldown > 0) btnShout.classList.add('disabled');
+    else btnShout.classList.remove('disabled');
+  }, 100);
+}
+
 // -------- Animation loop --------
 function animate() {
   requestAnimationFrame(animate);
@@ -632,6 +869,11 @@ function updatePlayer(dt) {
   if (keys['KeyS']) move.sub(forward);
   if (keys['KeyD']) move.add(right);
   if (keys['KeyA']) move.sub(right);
+  // Mobile joystick: y is forward (+ = forward), x is strafe (+ = right)
+  if (mobileMove.x !== 0 || mobileMove.y !== 0) {
+    move.add(forward.clone().multiplyScalar(mobileMove.y));
+    move.add(right.clone().multiplyScalar(mobileMove.x));
+  }
   if (move.lengthSq() > 0) move.normalize().multiplyScalar(speed * dt);
 
   player.pos.x += move.x;
@@ -871,8 +1113,13 @@ document.getElementById('startBtn').addEventListener('click', () => {
   document.getElementById('hud').style.display = 'block';
   gameStarted = true;
   initAudio();
-  renderer.domElement.requestPointerLock();
-  showHint('Найди дракона в небе. F — Фус Ро Да, чтобы сбить.', 4);
+  if (IS_MOBILE) {
+    document.getElementById('mobileControls').classList.add('active');
+    showHint('Найди дракона в небе. 🌀 ФУС РО ДА, чтобы сбить.', 4);
+  } else {
+    renderer.domElement.requestPointerLock();
+    showHint('Найди дракона в небе. F — Фус Ро Да, чтобы сбить.', 4);
+  }
 });
 
 document.getElementById('restartBtn').addEventListener('click', () => {
