@@ -1,0 +1,1951 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SIMS — но в браузере</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; font-family: 'Trebuchet MS', 'Segoe UI', sans-serif; background: #1a2a3a; color: #fff; user-select: none; }
+  #app { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+  canvas { display: block; }
+
+  /* ===== TITLE SCREEN ===== */
+  #title-screen {
+    position: absolute; inset: 0; z-index: 50;
+    background: linear-gradient(180deg, #5dd0ff 0%, #34c3a4 60%, #2c8f78 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  #title-screen::before {
+    content: ''; position: absolute; inset: -20%;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.5) 0, transparent 12%),
+      radial-gradient(circle at 70% 20%, rgba(255,255,255,0.4) 0, transparent 10%),
+      radial-gradient(circle at 85% 60%, rgba(255,255,255,0.4) 0, transparent 8%),
+      radial-gradient(circle at 30% 80%, rgba(255,255,255,0.4) 0, transparent 10%);
+    animation: clouds 60s linear infinite;
+    pointer-events: none;
+  }
+  @keyframes clouds { from { transform: translateX(0); } to { transform: translateX(-20%); } }
+
+  #title-canvas-wrap {
+    width: 340px; height: 340px; max-width: 60vw; max-height: 40vh;
+    margin-bottom: 10px; border-radius: 50%;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.25), inset 0 0 0 6px rgba(255,255,255,0.3);
+    overflow: hidden; background: linear-gradient(180deg, #b6e8ff, #7fcfa8);
+  }
+  #title-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
+
+  #title-logo {
+    font-size: clamp(60px, 13vw, 140px);
+    font-weight: 900;
+    letter-spacing: 12px;
+    background: linear-gradient(180deg, #c9ffff 0%, #5fffd6 40%, #1ebd92 100%);
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+    -webkit-text-stroke: 3px #0e5a4a;
+    text-shadow: 0 8px 0 #0e5a4a, 0 12px 30px rgba(0,0,0,0.3);
+    margin-top: -10px;
+  }
+  #title-sub {
+    font-size: clamp(16px, 2.5vw, 24px);
+    color: #fff; text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+    margin-top: -4px; margin-bottom: 24px;
+    font-style: italic;
+  }
+  .title-btn {
+    display: block;
+    margin: 10px auto;
+    padding: 16px 36px;
+    font-size: clamp(15px, 2vw, 19px);
+    font-weight: 700;
+    border: none; border-radius: 14px;
+    background: linear-gradient(180deg, #4dd9b8 0%, #1ea783 100%);
+    color: #fff; text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+    box-shadow: 0 6px 0 #0c6450, 0 10px 18px rgba(0,0,0,0.25);
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+    min-width: 280px;
+    z-index: 2; position: relative;
+  }
+  .title-btn:hover { transform: translateY(-2px); }
+  .title-btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #0c6450, 0 4px 8px rgba(0,0,0,0.25); }
+  .title-btn.secondary {
+    background: linear-gradient(180deg, #ffd56a 0%, #f0a020 100%);
+    box-shadow: 0 6px 0 #8a5a10, 0 10px 18px rgba(0,0,0,0.25);
+  }
+  .title-btn.secondary:active { box-shadow: 0 2px 0 #8a5a10, 0 4px 8px rgba(0,0,0,0.25); }
+
+  /* ===== CAS SCREEN ===== */
+  #cas-screen {
+    position: absolute; inset: 0; z-index: 40;
+    display: none;
+    background: linear-gradient(135deg, #2d3e57 0%, #1a2a3a 100%);
+  }
+  #cas-screen.active { display: flex; }
+  #cas-left {
+    flex: 1; position: relative; min-width: 0;
+    background: radial-gradient(ellipse at center, #4f7ba0 0%, #1e2f47 80%);
+  }
+  #cas-canvas { width: 100%; height: 100%; display: block; }
+  #cas-name-display {
+    position: absolute; top: 20px; left: 0; right: 0;
+    text-align: center;
+    font-size: clamp(20px, 3vw, 32px);
+    font-weight: 800;
+    color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    pointer-events: none;
+  }
+  #cas-right {
+    width: 380px; max-width: 45vw;
+    background: linear-gradient(180deg, #243a55 0%, #1a2638 100%);
+    padding: 16px; overflow-y: auto;
+    box-shadow: -4px 0 20px rgba(0,0,0,0.4);
+    display: flex; flex-direction: column;
+  }
+  #cas-right h2 {
+    color: #5fffd6; font-size: 22px; margin-bottom: 12px;
+    border-bottom: 2px solid #5fffd6; padding-bottom: 6px;
+  }
+  .cas-section { margin-bottom: 14px; }
+  .cas-section h3 {
+    font-size: 13px; color: #9bd5ff; margin-bottom: 6px;
+    text-transform: uppercase; letter-spacing: 1px;
+  }
+  .swatch-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .swatch {
+    width: 32px; height: 32px; border-radius: 8px;
+    border: 3px solid transparent;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    transition: transform 0.1s;
+  }
+  .swatch:hover { transform: scale(1.1); }
+  .swatch.selected { border-color: #5fffd6; box-shadow: 0 0 8px #5fffd6; }
+  .opt-row { display: flex; flex-wrap: wrap; gap: 6px; }
+  .opt-btn {
+    padding: 6px 12px; border-radius: 8px; border: 2px solid #3a5a7a;
+    background: #2a3f57; color: #cde; cursor: pointer;
+    font-size: 13px; font-weight: 600;
+    transition: all 0.1s;
+  }
+  .opt-btn:hover { background: #3a5a7a; }
+  .opt-btn.selected {
+    background: #1ea783; border-color: #5fffd6; color: #fff;
+    box-shadow: 0 0 8px rgba(95,255,214,0.4);
+  }
+  .slider-row { display: flex; align-items: center; gap: 8px; }
+  .slider-row input[type=range] {
+    flex: 1; accent-color: #1ea783;
+  }
+  .slider-row span { font-size: 12px; color: #9bd5ff; width: 30px; text-align: right; }
+  #cas-name-input {
+    width: 100%; padding: 8px 12px; border-radius: 8px;
+    border: 2px solid #3a5a7a; background: #1a2638; color: #fff;
+    font-size: 15px; font-family: inherit;
+  }
+  #cas-name-input:focus { outline: none; border-color: #5fffd6; }
+  .cas-action-row { display: flex; gap: 10px; margin-top: 12px; }
+  .cas-btn {
+    flex: 1; padding: 14px;
+    font-size: 15px; font-weight: 700;
+    border: none; border-radius: 12px;
+    cursor: pointer;
+    color: #fff;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.3);
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .cas-btn.primary {
+    background: linear-gradient(180deg, #4dd9b8, #1ea783);
+    box-shadow: 0 4px 0 #0c6450;
+  }
+  .cas-btn.random {
+    background: linear-gradient(180deg, #f0a8e8, #c050b0);
+    box-shadow: 0 4px 0 #802070;
+  }
+  .cas-btn:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.3); }
+
+  /* ===== GAME / TOWN SCREEN ===== */
+  #game-screen {
+    position: absolute; inset: 0; z-index: 30;
+    display: none;
+  }
+  #game-screen.active { display: block; }
+  #game-canvas { width: 100%; height: 100%; display: block; }
+
+  /* HUD */
+  #hud-top-left {
+    position: absolute; top: 12px; left: 12px;
+    background: rgba(20,40,60,0.75);
+    padding: 10px 16px; border-radius: 12px;
+    border: 2px solid rgba(95,255,214,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    color: #fff;
+  }
+  #hud-name { font-size: 18px; font-weight: 700; }
+  #hud-mood { font-size: 14px; opacity: 0.9; }
+
+  #hud-top-right {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(20,40,60,0.75);
+    padding: 10px 16px; border-radius: 12px;
+    border: 2px solid rgba(95,255,214,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    color: #fff; font-size: 16px; font-weight: 600;
+    text-align: right;
+  }
+  #hud-clock { font-size: 20px; }
+  #hud-day { font-size: 12px; opacity: 0.8; }
+
+  #hud-needs {
+    position: absolute; bottom: 16px; left: 16px;
+    background: rgba(20,40,60,0.78);
+    padding: 12px 14px; border-radius: 14px;
+    border: 2px solid rgba(95,255,214,0.4);
+    backdrop-filter: blur(4px);
+    z-index: 10;
+    min-width: 240px;
+  }
+  .need-row {
+    display: flex; align-items: center; gap: 8px; margin: 4px 0;
+    font-size: 13px;
+  }
+  .need-label { width: 90px; color: #cde; font-weight: 600; }
+  .need-bar-wrap {
+    flex: 1; height: 14px;
+    background: rgba(0,0,0,0.4);
+    border-radius: 7px; overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .need-bar {
+    height: 100%; width: 100%;
+    background: linear-gradient(90deg, #2ed673, #5fffa8);
+    transition: width 0.3s, background 0.3s;
+    border-radius: 6px;
+  }
+  .need-bar.med { background: linear-gradient(90deg, #f0b020, #ffd56a); }
+  .need-bar.low { background: linear-gradient(90deg, #d63030, #ff5050); }
+
+  #interact-prompt {
+    position: absolute; left: 50%; bottom: 22%;
+    transform: translateX(-50%);
+    background: rgba(20,40,60,0.9);
+    color: #fff; padding: 12px 22px;
+    border-radius: 14px;
+    border: 2px solid #5fffd6;
+    font-size: 16px; font-weight: 600;
+    z-index: 10;
+    display: none;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  }
+  #interact-prompt.show { display: block; }
+
+  #action-progress {
+    position: absolute; left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(20,40,60,0.95);
+    padding: 20px 30px; border-radius: 16px;
+    border: 2px solid #5fffd6;
+    z-index: 11; display: none;
+    text-align: center; min-width: 260px;
+  }
+  #action-progress.show { display: block; }
+  #action-progress h3 { color: #fff; margin-bottom: 10px; font-size: 18px; }
+  #action-progress-bar-wrap {
+    height: 18px; background: rgba(0,0,0,0.4);
+    border-radius: 9px; overflow: hidden;
+  }
+  #action-progress-bar {
+    height: 100%; width: 0%;
+    background: linear-gradient(90deg, #5fffd6, #1ea783);
+    transition: width 0.1s linear;
+  }
+
+  #exit-btn {
+    position: absolute; top: 12px; left: 50%; transform: translateX(-50%);
+    background: rgba(220,80,80,0.85);
+    color: #fff; padding: 8px 18px;
+    border: 2px solid #fff; border-radius: 10px;
+    font-size: 14px; font-weight: 700;
+    cursor: pointer; z-index: 10;
+  }
+
+  /* Mobile controls */
+  #joystick {
+    position: absolute; left: 30px; bottom: 110px;
+    width: 130px; height: 130px;
+    background: rgba(255,255,255,0.15);
+    border: 3px solid rgba(255,255,255,0.4);
+    border-radius: 50%;
+    z-index: 12; display: none;
+    touch-action: none;
+  }
+  #joystick-knob {
+    position: absolute; left: 50%; top: 50%;
+    width: 56px; height: 56px;
+    background: rgba(95,255,214,0.7);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  #mobile-interact {
+    position: absolute; right: 30px; bottom: 130px;
+    width: 90px; height: 90px;
+    background: rgba(95,255,214,0.85);
+    border: 3px solid #fff;
+    border-radius: 50%;
+    z-index: 12; display: none;
+    color: #0c4030; font-weight: 800; font-size: 12px;
+    cursor: pointer;
+    text-align: center; line-height: 1.1;
+    padding-top: 28px;
+  }
+  body.touch #joystick { display: block; }
+  body.touch #mobile-interact.show { display: block; }
+
+  /* small screens */
+  @media (max-width: 600px) {
+    #cas-right { width: 100%; max-width: 100%; max-height: 50vh; }
+    #cas-screen { flex-direction: column; }
+    #cas-left { height: 50vh; flex: none; }
+    #hud-needs { min-width: 180px; padding: 8px 10px; bottom: 12px; }
+    .need-label { width: 70px; font-size: 11px; }
+    .need-row { font-size: 11px; }
+    #hud-top-left, #hud-top-right { padding: 6px 10px; font-size: 12px; }
+    #hud-name { font-size: 14px; }
+    #hud-clock { font-size: 15px; }
+  }
+
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ====== TITLE SCREEN ====== -->
+  <div id="title-screen">
+    <div id="title-canvas-wrap"></div>
+    <div id="title-logo">SIMS</div>
+    <div id="title-sub">(но в браузере)</div>
+    <button class="title-btn" id="btn-create">СОЗДАТЬ ПЕРСОНАЖА</button>
+    <button class="title-btn secondary" id="btn-quick">В ГОРОД (с дефолтным симом)</button>
+  </div>
+
+  <!-- ====== CAS SCREEN ====== -->
+  <div id="cas-screen">
+    <div id="cas-left">
+      <canvas id="cas-canvas"></canvas>
+      <div id="cas-name-display">Сим Симыч</div>
+    </div>
+    <div id="cas-right">
+      <h2>СОЗДАТЬ СИМА</h2>
+
+      <div class="cas-section">
+        <h3>Имя</h3>
+        <input type="text" id="cas-name-input" value="Сим Симыч" maxlength="20">
+      </div>
+
+      <div class="cas-section">
+        <h3>Пол</h3>
+        <div class="opt-row" id="opt-gender"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Цвет кожи</h3>
+        <div class="swatch-row" id="opt-skin"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Причёска</h3>
+        <div class="opt-row" id="opt-hair"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Цвет волос</h3>
+        <div class="swatch-row" id="opt-haircolor"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Цвет глаз</h3>
+        <div class="swatch-row" id="opt-eyes"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Лицо — Нос <span id="nose-val" style="color:#5fffd6;">50</span></h3>
+        <div class="slider-row">
+          <input type="range" id="slider-nose" min="0" max="100" value="50">
+        </div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Лицо — Подбородок <span id="chin-val" style="color:#5fffd6;">50</span></h3>
+        <div class="slider-row">
+          <input type="range" id="slider-chin" min="0" max="100" value="50">
+        </div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Топ — стиль</h3>
+        <div class="opt-row" id="opt-shirt-style"></div>
+      </div>
+      <div class="cas-section">
+        <h3>Топ — цвет</h3>
+        <div class="swatch-row" id="opt-shirt-color"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Штаны — стиль</h3>
+        <div class="opt-row" id="opt-pants-style"></div>
+      </div>
+      <div class="cas-section">
+        <h3>Штаны — цвет</h3>
+        <div class="swatch-row" id="opt-pants-color"></div>
+      </div>
+
+      <div class="cas-section">
+        <h3>Обувь</h3>
+        <div class="swatch-row" id="opt-shoes"></div>
+      </div>
+
+      <div class="cas-action-row">
+        <button class="cas-btn random" id="btn-random">Случайный сим 🎲</button>
+        <button class="cas-btn primary" id="btn-ready">ГОТОВО → В ГОРОД</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== GAME SCREEN ====== -->
+  <div id="game-screen">
+    <canvas id="game-canvas"></canvas>
+
+    <div id="hud-top-left">
+      <div id="hud-name">Сим Симыч</div>
+      <div id="hud-mood">😊 Счастлив</div>
+    </div>
+
+    <div id="hud-top-right">
+      <div id="hud-clock">08:00</div>
+      <div id="hud-day">День 1</div>
+    </div>
+
+    <div id="hud-needs">
+      <div class="need-row"><span class="need-label">🍽 Голод</span><div class="need-bar-wrap"><div class="need-bar" id="bar-hunger"></div></div></div>
+      <div class="need-row"><span class="need-label">💤 Энергия</span><div class="need-bar-wrap"><div class="need-bar" id="bar-energy"></div></div></div>
+      <div class="need-row"><span class="need-label">🎉 Веселье</span><div class="need-bar-wrap"><div class="need-bar" id="bar-fun"></div></div></div>
+      <div class="need-row"><span class="need-label">🚿 Гигиена</span><div class="need-bar-wrap"><div class="need-bar" id="bar-hygiene"></div></div></div>
+    </div>
+
+    <div id="interact-prompt">Нажми <b>E</b>: <span id="interact-label">взаимодействовать</span></div>
+
+    <div id="action-progress">
+      <h3 id="action-title">Действие...</h3>
+      <div id="action-progress-bar-wrap"><div id="action-progress-bar"></div></div>
+    </div>
+
+    <button id="exit-btn" class="hidden">← Выйти из дома</button>
+
+    <div id="joystick"><div id="joystick-knob"></div></div>
+    <button id="mobile-interact">ВЗАИМО-<br>ДЕЙСТВО-<br>ВАТЬ</button>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+// ============================================
+// GLOBAL STATE & CONFIG
+// ============================================
+const SKIN_COLORS = [0xfbdfc4, 0xf2c79a, 0xd9a075, 0xb87850, 0x8a5a3a, 0x4f3422];
+const HAIR_COLORS = [0xf5d97a, 0x6b4023, 0x1a1a1a, 0xc04030, 0x4080d0, 0xff70b0];
+const EYE_COLORS  = [0x4a90e2, 0x5a3a20, 0x4caf50, 0xa07040, 0x9050d0];
+const SHIRT_COLORS = [0xff5050, 0x4080ff, 0x40c060, 0xffd040, 0xb050e0, 0xffffff];
+const PANTS_COLORS = [0x303050, 0x5a3a20, 0x404040, 0x208050, 0x802020, 0xa06030];
+const SHOE_COLORS  = [0x1a1a1a, 0x8a4a20, 0xffffff];
+const HAIR_STYLES = ['короткая', 'длинная', 'хвост', 'лысая', 'ирокез'];
+const SHIRT_STYLES = ['футболка', 'майка', 'свитер', 'рубашка'];
+const PANTS_STYLES = ['джинсы', 'шорты', 'юбка'];
+
+const sim = {
+  name: 'Сим Симыч',
+  gender: 'м',
+  skinIdx: 1, hairIdx: 0, hairColorIdx: 1, eyeColorIdx: 0,
+  noseSize: 50, chinSize: 50,
+  shirtStyleIdx: 0, shirtColorIdx: 0,
+  pantsStyleIdx: 0, pantsColorIdx: 0,
+  shoeColorIdx: 0
+};
+
+const needs = { hunger: 100, energy: 100, fun: 100, hygiene: 100 };
+const NEED_DECAY = 0.6; // per second
+const NEED_NAMES = { hunger: 'Голод', energy: 'Энергия', fun: 'Веселье', hygiene: 'Гигиена' };
+
+let playerInside = false;
+let isMobile = false;
+let gameTime = 8 * 60; // minutes since midnight
+let gameDay = 1;
+let currentAction = null;
+let actionTimer = 0;
+let actionDuration = 4;
+
+// ============================================
+// SCREEN MANAGEMENT
+// ============================================
+const titleScreen = document.getElementById('title-screen');
+const casScreen = document.getElementById('cas-screen');
+const gameScreen = document.getElementById('game-screen');
+
+function showTitle() {
+  titleScreen.style.display = 'flex';
+  casScreen.classList.remove('active');
+  gameScreen.classList.remove('active');
+  startTitleScene();
+}
+function showCAS() {
+  titleScreen.style.display = 'none';
+  casScreen.classList.add('active');
+  gameScreen.classList.remove('active');
+  stopTitleScene();
+  startCASScene();
+}
+function showGame() {
+  titleScreen.style.display = 'none';
+  casScreen.classList.remove('active');
+  gameScreen.classList.add('active');
+  stopCASScene();
+  startGameScene();
+}
+
+// Detect touch
+if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+  isMobile = true;
+  document.body.classList.add('touch');
+}
+
+// ============================================
+// SIM BUILDER (used by CAS preview + town)
+// ============================================
+function buildSim(config) {
+  const group = new THREE.Group();
+  group.userData.config = config;
+  group.userData.parts = {};
+
+  const skinColor = SKIN_COLORS[config.skinIdx];
+  const hairColor = HAIR_COLORS[config.hairColorIdx];
+  const eyeColor  = EYE_COLORS[config.eyeColorIdx];
+  const shirtColor = SHIRT_COLORS[config.shirtColorIdx];
+  const pantsColor = PANTS_COLORS[config.pantsColorIdx];
+  const shoeColor  = SHOE_COLORS[config.shoeColorIdx];
+
+  const skinMat = new THREE.MeshLambertMaterial({ color: skinColor, flatShading: true });
+  const shirtMat = new THREE.MeshLambertMaterial({ color: shirtColor, flatShading: true });
+  const pantsMat = new THREE.MeshLambertMaterial({ color: pantsColor, flatShading: true });
+  const shoeMat  = new THREE.MeshLambertMaterial({ color: shoeColor, flatShading: true });
+  const hairMat  = new THREE.MeshLambertMaterial({ color: hairColor, flatShading: true });
+  const eyeMat   = new THREE.MeshBasicMaterial({ color: eyeColor });
+  const whiteMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const mouthMat = new THREE.MeshBasicMaterial({ color: 0x6a1a1a });
+
+  const female = config.gender === 'ж';
+  const bodyWidth = female ? 0.42 : 0.5;
+  const shoulderW = female ? 0.42 : 0.5;
+
+  // ----- Legs -----
+  const legGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 12);
+  const legL = new THREE.Mesh(legGeo, pantsMat);
+  legL.position.set(-0.13, 0.35, 0);
+  const legR = new THREE.Mesh(legGeo, pantsMat);
+  legR.position.set(0.13, 0.35, 0);
+  group.add(legL, legR);
+  group.userData.parts.legL = legL;
+  group.userData.parts.legR = legR;
+
+  // Pants style alters legs:
+  if (config.pantsStyleIdx === 1) { // shorts
+    legL.scale.y = 0.55; legR.scale.y = 0.55;
+    legL.position.y = 0.5; legR.position.y = 0.5;
+    // skin lower legs
+    const lowerGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.35, 12);
+    const lowL = new THREE.Mesh(lowerGeo, skinMat); lowL.position.set(-0.13, 0.18, 0);
+    const lowR = new THREE.Mesh(lowerGeo, skinMat); lowR.position.set(0.13, 0.18, 0);
+    group.add(lowL, lowR);
+  } else if (config.pantsStyleIdx === 2) { // skirt
+    legL.scale.set(0.85, 0.7, 0.85); legR.scale.set(0.85, 0.7, 0.85);
+    legL.material = skinMat; legR.material = skinMat;
+    legL.position.y = 0.25; legR.position.y = 0.25;
+    const skirtGeo = new THREE.ConeGeometry(0.35, 0.4, 16, 1, true);
+    const skirt = new THREE.Mesh(skirtGeo, pantsMat);
+    skirt.position.y = 0.6; skirt.rotation.x = Math.PI; // flip cone
+    group.add(skirt);
+  }
+
+  // ----- Feet -----
+  const footGeo = new THREE.BoxGeometry(0.16, 0.08, 0.22);
+  const footL = new THREE.Mesh(footGeo, shoeMat);
+  footL.position.set(-0.13, -0.04, 0.04);
+  const footR = new THREE.Mesh(footGeo, shoeMat);
+  footR.position.set(0.13, -0.04, 0.04);
+  group.add(footL, footR);
+
+  // ----- Body / torso -----
+  const torsoGeo = new THREE.BoxGeometry(bodyWidth, 0.55, 0.3);
+  const torso = new THREE.Mesh(torsoGeo, shirtMat);
+  torso.position.y = 1.0;
+  group.add(torso);
+
+  // ----- Arms -----
+  const armGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.55, 10);
+  const armL = new THREE.Mesh(armGeo, skinMat);
+  armL.position.set(-(shoulderW/2 + 0.1), 1.0, 0);
+  const armR = new THREE.Mesh(armGeo, skinMat);
+  armR.position.set((shoulderW/2 + 0.1), 1.0, 0);
+  group.add(armL, armR);
+  group.userData.parts.armL = armL;
+  group.userData.parts.armR = armR;
+
+  // Shirt sleeves (top portion)
+  const sleeveLen = config.shirtStyleIdx === 1 ? 0.1 : (config.shirtStyleIdx === 2 ? 0.45 : 0.2); // tank vs sweater
+  const sleeveGeo = new THREE.CylinderGeometry(0.09, 0.085, sleeveLen, 10);
+  const sleeveL = new THREE.Mesh(sleeveGeo, shirtMat);
+  sleeveL.position.set(-(shoulderW/2 + 0.1), 1.0 + 0.275 - sleeveLen/2, 0);
+  const sleeveR = new THREE.Mesh(sleeveGeo, shirtMat);
+  sleeveR.position.set((shoulderW/2 + 0.1), 1.0 + 0.275 - sleeveLen/2, 0);
+  group.add(sleeveL, sleeveR);
+
+  // Shirt style differences
+  if (config.shirtStyleIdx === 3) { // рубашка - add collar/buttons
+    const collarGeo = new THREE.BoxGeometry(bodyWidth + 0.02, 0.08, 0.32);
+    const collar = new THREE.Mesh(collarGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+    collar.position.y = 1.27;
+    group.add(collar);
+  }
+
+  // ----- Head -----
+  const headGeo = new THREE.SphereGeometry(0.25, 16, 12);
+  const head = new THREE.Mesh(headGeo, skinMat);
+  head.position.y = 1.55;
+  group.add(head);
+  group.userData.parts.head = head;
+
+  // ----- Eyes -----
+  const eyeWhiteGeo = new THREE.SphereGeometry(0.06, 10, 8);
+  const eyeWhiteL = new THREE.Mesh(eyeWhiteGeo, whiteMat);
+  eyeWhiteL.position.set(-0.09, 1.58, 0.21);
+  const eyeWhiteR = new THREE.Mesh(eyeWhiteGeo, whiteMat);
+  eyeWhiteR.position.set(0.09, 1.58, 0.21);
+  group.add(eyeWhiteL, eyeWhiteR);
+  const pupilGeo = new THREE.SphereGeometry(0.035, 10, 8);
+  const pupilL = new THREE.Mesh(pupilGeo, eyeMat);
+  pupilL.position.set(-0.09, 1.58, 0.255);
+  const pupilR = new THREE.Mesh(pupilGeo, eyeMat);
+  pupilR.position.set(0.09, 1.58, 0.255);
+  group.add(pupilL, pupilR);
+
+  // ----- Mouth -----
+  const mouthGeo = new THREE.BoxGeometry(0.1, 0.02, 0.02);
+  const mouth = new THREE.Mesh(mouthGeo, mouthMat);
+  mouth.position.set(0, 1.44, 0.245);
+  group.add(mouth);
+
+  // ----- Nose -----
+  const noseScale = 0.5 + (config.noseSize / 100) * 1.2; // 0.5x to 1.7x
+  const noseGeo = new THREE.ConeGeometry(0.04, 0.1, 6);
+  const nose = new THREE.Mesh(noseGeo, skinMat);
+  nose.position.set(0, 1.52, 0.24);
+  nose.rotation.x = Math.PI / 2;
+  nose.scale.set(noseScale, 1, noseScale);
+  group.add(nose);
+  group.userData.parts.nose = nose;
+
+  // ----- Chin -----
+  const chinOffset = -0.02 + (config.chinSize / 100) * 0.08; // 0 to 0.08 forward
+  const chinGeo = new THREE.BoxGeometry(0.16, 0.08, 0.1);
+  const chin = new THREE.Mesh(chinGeo, skinMat);
+  chin.position.set(0, 1.36, 0.18 + chinOffset);
+  group.add(chin);
+  group.userData.parts.chin = chin;
+
+  // ----- Hair -----
+  const hairStyle = config.hairIdx;
+  if (hairStyle === 0) {
+    // короткая - half sphere on top
+    const g = new THREE.SphereGeometry(0.27, 16, 10, 0, Math.PI*2, 0, Math.PI/2.1);
+    const h = new THREE.Mesh(g, hairMat);
+    h.position.y = 1.56;
+    group.add(h);
+  } else if (hairStyle === 1) {
+    // длинная - sphere cap + long part behind
+    const g = new THREE.SphereGeometry(0.27, 16, 12);
+    const h = new THREE.Mesh(g, hairMat);
+    h.position.y = 1.58;
+    h.scale.set(1, 1.05, 1);
+    group.add(h);
+    const longGeo = new THREE.BoxGeometry(0.38, 0.55, 0.18);
+    const long = new THREE.Mesh(longGeo, hairMat);
+    long.position.set(0, 1.4, -0.13);
+    group.add(long);
+  } else if (hairStyle === 2) {
+    // хвост - cap + torus base + ponytail behind
+    const g = new THREE.SphereGeometry(0.27, 16, 10, 0, Math.PI*2, 0, Math.PI/1.9);
+    const h = new THREE.Mesh(g, hairMat);
+    h.position.y = 1.56;
+    group.add(h);
+    const torusGeo = new THREE.TorusGeometry(0.06, 0.025, 8, 16);
+    const tor = new THREE.Mesh(torusGeo, hairMat);
+    tor.position.set(0, 1.7, -0.22);
+    tor.rotation.x = Math.PI / 2;
+    group.add(tor);
+    const ponyGeo = new THREE.CylinderGeometry(0.06, 0.04, 0.4, 10);
+    const pony = new THREE.Mesh(ponyGeo, hairMat);
+    pony.position.set(0, 1.5, -0.28);
+    pony.rotation.x = 0.4;
+    group.add(pony);
+  } else if (hairStyle === 3) {
+    // лысая - nothing (or skin tint)
+  } else if (hairStyle === 4) {
+    // ирокез - strip from front to back
+    const mohGeo = new THREE.BoxGeometry(0.08, 0.25, 0.5);
+    const moh = new THREE.Mesh(mohGeo, hairMat);
+    moh.position.set(0, 1.85, 0);
+    group.add(moh);
+    // sides shaved (skin)
+  }
+
+  // ----- Plumbob -----
+  const plumbobGeo = new THREE.OctahedronGeometry(0.15);
+  const plumbobMat = new THREE.MeshStandardMaterial({
+    color: 0x00ff44,
+    emissive: 0x00ff44,
+    emissiveIntensity: 0.8,
+    flatShading: true
+  });
+  const plumbob = new THREE.Mesh(plumbobGeo, plumbobMat);
+  plumbob.position.y = 2.15;
+  plumbob.scale.set(1, 1.4, 1);
+  group.add(plumbob);
+  group.userData.plumbob = plumbob;
+  group.userData.plumbobBaseY = 2.15;
+
+  // Plumbob glow halo
+  const haloGeo = new THREE.SphereGeometry(0.2, 12, 8);
+  const haloMat = new THREE.MeshBasicMaterial({
+    color: 0x00ff44, transparent: true, opacity: 0.2
+  });
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  plumbob.add(halo);
+  group.userData.plumbobHalo = halo;
+  group.userData.plumbobMat = plumbobMat;
+  group.userData.plumbobHaloMat = haloMat;
+
+  return group;
+}
+
+function updatePlumbobMood(simGroup, minNeed) {
+  let color = 0x00ff44;
+  if (minNeed < 20) color = 0xff3322;
+  else if (minNeed < 50) color = 0xffdd00;
+  simGroup.userData.plumbobMat.color.setHex(color);
+  simGroup.userData.plumbobMat.emissive.setHex(color);
+  simGroup.userData.plumbobHaloMat.color.setHex(color);
+}
+
+// Walking animation
+function animateSimWalk(simGroup, walking, t) {
+  const parts = simGroup.userData.parts;
+  if (!parts) return;
+  if (walking) {
+    const swing = Math.sin(t * 8) * 0.6;
+    if (parts.legL) parts.legL.rotation.x = swing;
+    if (parts.legR) parts.legR.rotation.x = -swing;
+    if (parts.armL) parts.armL.rotation.x = -swing * 0.7;
+    if (parts.armR) parts.armR.rotation.x = swing * 0.7;
+  } else {
+    if (parts.legL) parts.legL.rotation.x *= 0.85;
+    if (parts.legR) parts.legR.rotation.x *= 0.85;
+    if (parts.armL) parts.armL.rotation.x *= 0.85;
+    if (parts.armR) parts.armR.rotation.x *= 0.85;
+  }
+}
+
+// ============================================
+// TITLE SCENE (small 3D sim spinning)
+// ============================================
+let titleRenderer, titleScene, titleCamera, titleSim, titleAnimId, titleStart;
+
+function startTitleScene() {
+  const wrap = document.getElementById('title-canvas-wrap');
+  if (titleRenderer) {
+    // already created
+    if (!titleAnimId) titleLoop();
+    return;
+  }
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  titleRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+  titleRenderer.setSize(w, h);
+  titleRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  wrap.appendChild(titleRenderer.domElement);
+
+  titleScene = new THREE.Scene();
+  titleScene.background = new THREE.Color(0x9bdef5);
+
+  titleCamera = new THREE.PerspectiveCamera(35, w / h, 0.1, 50);
+  titleCamera.position.set(0, 1.3, 4);
+  titleCamera.lookAt(0, 1, 0);
+
+  const amb = new THREE.AmbientLight(0xffffff, 0.7);
+  titleScene.add(amb);
+  const dir = new THREE.DirectionalLight(0xffffff, 0.7);
+  dir.position.set(3, 5, 3);
+  titleScene.add(dir);
+
+  // Floor disc
+  const floorGeo = new THREE.CylinderGeometry(1.2, 1.2, 0.1, 24);
+  const floor = new THREE.Mesh(floorGeo, new THREE.MeshLambertMaterial({ color: 0x4fb888, flatShading: true }));
+  floor.position.y = -0.05;
+  titleScene.add(floor);
+
+  titleSim = buildSim({
+    gender: 'ж', skinIdx: 1, hairIdx: 1, hairColorIdx: 0, eyeColorIdx: 0,
+    noseSize: 50, chinSize: 50,
+    shirtStyleIdx: 0, shirtColorIdx: 4,
+    pantsStyleIdx: 0, pantsColorIdx: 0, shoeColorIdx: 0
+  });
+  titleScene.add(titleSim);
+
+  titleStart = performance.now();
+  titleLoop();
+}
+
+function titleLoop() {
+  const t = (performance.now() - titleStart) / 1000;
+  if (titleSim) {
+    titleSim.rotation.y = t * 0.6;
+    const plumb = titleSim.userData.plumbob;
+    plumb.rotation.y += 0.05;
+    plumb.position.y = titleSim.userData.plumbobBaseY + Math.sin(t * 2) * 0.08;
+  }
+  titleRenderer.render(titleScene, titleCamera);
+  titleAnimId = requestAnimationFrame(titleLoop);
+}
+
+function stopTitleScene() {
+  if (titleAnimId) {
+    cancelAnimationFrame(titleAnimId);
+    titleAnimId = null;
+  }
+}
+
+window.addEventListener('resize', () => {
+  if (titleRenderer && titleScene) {
+    const wrap = document.getElementById('title-canvas-wrap');
+    const w = wrap.clientWidth, h = wrap.clientHeight;
+    titleRenderer.setSize(w, h);
+    titleCamera.aspect = w / h;
+    titleCamera.updateProjectionMatrix();
+  }
+});
+
+// ============================================
+// CAS SCENE (preview sim + UI)
+// ============================================
+let casRenderer, casScene, casCamera, casSim, casAnimId, casStart;
+
+function rebuildCASSim() {
+  if (casSim) {
+    casScene.remove(casSim);
+    casSim.traverse(obj => {
+      if (obj.geometry) obj.geometry.dispose();
+    });
+  }
+  casSim = buildSim(sim);
+  casScene.add(casSim);
+}
+
+function startCASScene() {
+  const canvas = document.getElementById('cas-canvas');
+  const w = canvas.clientWidth || canvas.parentElement.clientWidth;
+  const h = canvas.clientHeight || canvas.parentElement.clientHeight;
+  if (!casRenderer) {
+    casRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    casRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    casScene = new THREE.Scene();
+    casScene.background = new THREE.Color(0x3a5a85);
+
+    casCamera = new THREE.PerspectiveCamera(35, w/h, 0.1, 50);
+    casCamera.position.set(0, 1.4, 4);
+    casCamera.lookAt(0, 1, 0);
+
+    const amb = new THREE.AmbientLight(0xffffff, 0.7);
+    casScene.add(amb);
+    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
+    dir.position.set(3, 5, 3);
+    casScene.add(dir);
+    const back = new THREE.DirectionalLight(0x9bdef5, 0.4);
+    back.position.set(-3, 2, -3);
+    casScene.add(back);
+
+    // Turntable
+    const tGeo = new THREE.CylinderGeometry(1.1, 1.2, 0.15, 24);
+    const turntable = new THREE.Mesh(tGeo, new THREE.MeshLambertMaterial({ color: 0x5fffd6, flatShading: true }));
+    turntable.position.y = -0.075;
+    casScene.add(turntable);
+    const ringGeo = new THREE.TorusGeometry(1.15, 0.04, 8, 32);
+    const ring = new THREE.Mesh(ringGeo, new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+    ring.position.y = 0.0;
+    ring.rotation.x = Math.PI / 2;
+    casScene.add(ring);
+  }
+  casRenderer.setSize(w, h, false);
+  casCamera.aspect = w / h;
+  casCamera.updateProjectionMatrix();
+
+  rebuildCASSim();
+  casStart = performance.now();
+  casLoop();
+}
+
+function casLoop() {
+  const t = (performance.now() - casStart) / 1000;
+  if (casSim) {
+    casSim.rotation.y = t * 0.5;
+    const plumb = casSim.userData.plumbob;
+    plumb.rotation.y += 0.06;
+    plumb.position.y = casSim.userData.plumbobBaseY + Math.sin(t * 2) * 0.08;
+  }
+  casRenderer.render(casScene, casCamera);
+  casAnimId = requestAnimationFrame(casLoop);
+}
+
+function stopCASScene() {
+  if (casAnimId) { cancelAnimationFrame(casAnimId); casAnimId = null; }
+}
+
+window.addEventListener('resize', () => {
+  if (casRenderer) {
+    const canvas = document.getElementById('cas-canvas');
+    const w = canvas.parentElement.clientWidth, h = canvas.parentElement.clientHeight;
+    casRenderer.setSize(w, h, false);
+    casCamera.aspect = w/h;
+    casCamera.updateProjectionMatrix();
+  }
+});
+
+// ============================================
+// CAS UI WIRING
+// ============================================
+function buildSwatches(containerId, colors, getCur, setCur) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  colors.forEach((col, i) => {
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.background = '#' + col.toString(16).padStart(6,'0');
+    if (i === getCur()) sw.classList.add('selected');
+    sw.addEventListener('click', () => {
+      setCur(i);
+      c.querySelectorAll('.swatch').forEach(x => x.classList.remove('selected'));
+      sw.classList.add('selected');
+      rebuildCASSim();
+    });
+    c.appendChild(sw);
+  });
+}
+function buildOptions(containerId, labels, getCur, setCur) {
+  const c = document.getElementById(containerId);
+  c.innerHTML = '';
+  labels.forEach((lbl, i) => {
+    const b = document.createElement('button');
+    b.className = 'opt-btn';
+    b.textContent = lbl;
+    if (i === getCur()) b.classList.add('selected');
+    b.addEventListener('click', () => {
+      setCur(i);
+      c.querySelectorAll('.opt-btn').forEach(x => x.classList.remove('selected'));
+      b.classList.add('selected');
+      rebuildCASSim();
+    });
+    c.appendChild(b);
+  });
+}
+
+function initCASUI() {
+  buildOptions('opt-gender', ['Мужской', 'Женский'],
+    () => sim.gender === 'м' ? 0 : 1,
+    (i) => sim.gender = i === 0 ? 'м' : 'ж'
+  );
+  buildSwatches('opt-skin', SKIN_COLORS,
+    () => sim.skinIdx, (i) => sim.skinIdx = i);
+  buildOptions('opt-hair', HAIR_STYLES,
+    () => sim.hairIdx, (i) => sim.hairIdx = i);
+  buildSwatches('opt-haircolor', HAIR_COLORS,
+    () => sim.hairColorIdx, (i) => sim.hairColorIdx = i);
+  buildSwatches('opt-eyes', EYE_COLORS,
+    () => sim.eyeColorIdx, (i) => sim.eyeColorIdx = i);
+  buildOptions('opt-shirt-style', SHIRT_STYLES,
+    () => sim.shirtStyleIdx, (i) => sim.shirtStyleIdx = i);
+  buildSwatches('opt-shirt-color', SHIRT_COLORS,
+    () => sim.shirtColorIdx, (i) => sim.shirtColorIdx = i);
+  buildOptions('opt-pants-style', PANTS_STYLES,
+    () => sim.pantsStyleIdx, (i) => sim.pantsStyleIdx = i);
+  buildSwatches('opt-pants-color', PANTS_COLORS,
+    () => sim.pantsColorIdx, (i) => sim.pantsColorIdx = i);
+  buildSwatches('opt-shoes', SHOE_COLORS,
+    () => sim.shoeColorIdx, (i) => sim.shoeColorIdx = i);
+
+  const noseSlider = document.getElementById('slider-nose');
+  const noseVal = document.getElementById('nose-val');
+  noseSlider.addEventListener('input', () => {
+    sim.noseSize = parseInt(noseSlider.value);
+    noseVal.textContent = sim.noseSize;
+    rebuildCASSim();
+  });
+  const chinSlider = document.getElementById('slider-chin');
+  const chinVal = document.getElementById('chin-val');
+  chinSlider.addEventListener('input', () => {
+    sim.chinSize = parseInt(chinSlider.value);
+    chinVal.textContent = sim.chinSize;
+    rebuildCASSim();
+  });
+
+  const nameInput = document.getElementById('cas-name-input');
+  nameInput.addEventListener('input', () => {
+    sim.name = nameInput.value || 'Сим';
+    document.getElementById('cas-name-display').textContent = sim.name;
+  });
+
+  document.getElementById('btn-random').addEventListener('click', randomizeSim);
+  document.getElementById('btn-ready').addEventListener('click', () => {
+    sim.name = nameInput.value || 'Сим';
+    document.getElementById('hud-name').textContent = sim.name;
+    showGame();
+  });
+}
+
+function randomizeSim() {
+  sim.gender = Math.random() < 0.5 ? 'м' : 'ж';
+  sim.skinIdx = Math.floor(Math.random() * SKIN_COLORS.length);
+  sim.hairIdx = Math.floor(Math.random() * HAIR_STYLES.length);
+  sim.hairColorIdx = Math.floor(Math.random() * HAIR_COLORS.length);
+  sim.eyeColorIdx = Math.floor(Math.random() * EYE_COLORS.length);
+  sim.noseSize = Math.floor(Math.random() * 100);
+  sim.chinSize = Math.floor(Math.random() * 100);
+  sim.shirtStyleIdx = Math.floor(Math.random() * SHIRT_STYLES.length);
+  sim.shirtColorIdx = Math.floor(Math.random() * SHIRT_COLORS.length);
+  sim.pantsStyleIdx = Math.floor(Math.random() * PANTS_STYLES.length);
+  sim.pantsColorIdx = Math.floor(Math.random() * PANTS_COLORS.length);
+  sim.shoeColorIdx = Math.floor(Math.random() * SHOE_COLORS.length);
+  const RU_NAMES = ['Аня', 'Петя', 'Маша', 'Вася', 'Лена', 'Иван', 'Оля', 'Дима', 'Катя', 'Саша'];
+  sim.name = RU_NAMES[Math.floor(Math.random() * RU_NAMES.length)];
+  document.getElementById('cas-name-input').value = sim.name;
+  document.getElementById('cas-name-display').textContent = sim.name;
+  document.getElementById('slider-nose').value = sim.noseSize;
+  document.getElementById('nose-val').textContent = sim.noseSize;
+  document.getElementById('slider-chin').value = sim.chinSize;
+  document.getElementById('chin-val').textContent = sim.chinSize;
+  initCASUI(); // re-render selected highlighting
+  rebuildCASSim();
+}
+
+initCASUI();
+
+// ============================================
+// GAME SCENE — TOWN
+// ============================================
+let gameRenderer, gameScene, gameCamera;
+let playerSim;
+let playerVel = new THREE.Vector3();
+let cameraYaw = 0;
+let cameraPitch = 0.4;
+let cameraDist = 6;
+let interactables = [];
+let npcs = [];
+let myHouse = null;
+let houses = [];
+let roofs = []; // roofs that should hide when inside
+let clouds = [];
+let gameAnimId, gameLastT;
+let nearestInteract = null;
+let arrow; // Yellow arrow above your house
+
+const keys = {};
+const TOWN_BOUNDS = 18;
+
+function startGameScene() {
+  const canvas = document.getElementById('game-canvas');
+  const w = window.innerWidth, h = window.innerHeight;
+
+  if (!gameRenderer) {
+    gameRenderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+    gameRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    gameScene = new THREE.Scene();
+    gameScene.background = new THREE.Color(0x87ceeb);
+    gameScene.fog = new THREE.Fog(0x87ceeb, 30, 80);
+
+    gameCamera = new THREE.PerspectiveCamera(55, w/h, 0.1, 200);
+    gameCamera.position.set(0, 5, 8);
+
+    buildTown();
+    setupInput();
+  }
+  gameRenderer.setSize(w, h, false);
+  gameCamera.aspect = w/h;
+  gameCamera.updateProjectionMatrix();
+
+  // Update player name HUD
+  document.getElementById('hud-name').textContent = sim.name;
+
+  // Place player at spawn (in front of own house)
+  if (playerSim) gameScene.remove(playerSim);
+  playerSim = buildSim(sim);
+  playerSim.position.set(0, 0, 6);
+  gameScene.add(playerSim);
+
+  playerInside = false;
+  document.getElementById('exit-btn').classList.add('hidden');
+
+  gameLastT = performance.now();
+  gameLoop();
+}
+
+function buildTown() {
+  // Ground
+  const groundGeo = new THREE.PlaneGeometry(80, 80, 1, 1);
+  const groundMat = new THREE.MeshLambertMaterial({ color: 0x6ab84c, flatShading: true });
+  const ground = new THREE.Mesh(groundGeo, groundMat);
+  ground.rotation.x = -Math.PI / 2;
+  gameScene.add(ground);
+
+  // Lights
+  const amb = new THREE.AmbientLight(0xffffff, 0.7);
+  gameScene.add(amb);
+  const sun = new THREE.DirectionalLight(0xffffff, 0.85);
+  sun.position.set(10, 20, 10);
+  gameScene.add(sun);
+  const sky = new THREE.HemisphereLight(0x87ceeb, 0x6ab84c, 0.4);
+  gameScene.add(sky);
+
+  // Roads (grey strips making a + shape)
+  const roadMat = new THREE.MeshLambertMaterial({ color: 0x808890, flatShading: true });
+  const roadH = new THREE.Mesh(new THREE.PlaneGeometry(60, 4), roadMat);
+  roadH.rotation.x = -Math.PI / 2; roadH.position.y = 0.01;
+  gameScene.add(roadH);
+  const roadV = new THREE.Mesh(new THREE.PlaneGeometry(4, 60), roadMat);
+  roadV.rotation.x = -Math.PI / 2; roadV.position.y = 0.01;
+  gameScene.add(roadV);
+  // Lane markings
+  const lineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (let i = -28; i <= 28; i += 4) {
+    const dash = new THREE.Mesh(new THREE.PlaneGeometry(2, 0.2), lineMat);
+    dash.rotation.x = -Math.PI / 2; dash.position.set(i, 0.02, 0);
+    gameScene.add(dash);
+    const dash2 = new THREE.Mesh(new THREE.PlaneGeometry(0.2, 2), lineMat);
+    dash2.rotation.x = -Math.PI / 2; dash2.position.set(0, 0.02, i);
+    gameScene.add(dash2);
+  }
+
+  // Houses — 5 houses around the map
+  const housePositions = [
+    { x:  10, z:  10, roof: 0xff6040, wall: 0xffd09a, mine: false },
+    { x: -10, z:  10, roof: 0x6080ff, wall: 0xc4e0f5, mine: false },
+    { x:  10, z: -10, roof: 0x40c060, wall: 0xfff4c4, mine: false },
+    { x: -10, z: -10, roof: 0xf0c040, wall: 0xf0d8c0, mine: false },
+    { x:   0, z:  14, roof: 0xff70b0, wall: 0xffe0e8, mine: true } // YOUR house, right where player spawns
+  ];
+  housePositions.forEach((cfg, idx) => {
+    const house = buildHouse(cfg);
+    house.position.set(cfg.x, 0, cfg.z);
+    gameScene.add(house);
+    houses.push(house);
+    if (cfg.mine) myHouse = house;
+  });
+
+  // Yellow arrow above own house
+  const arrowGroup = new THREE.Group();
+  const arrowConeGeo = new THREE.ConeGeometry(0.5, 1.0, 4);
+  const arrowMat = new THREE.MeshStandardMaterial({ color: 0xffe040, emissive: 0xffa020, emissiveIntensity: 0.6, flatShading: true });
+  const arrowCone = new THREE.Mesh(arrowConeGeo, arrowMat);
+  arrowCone.rotation.x = Math.PI; // point down
+  arrowGroup.add(arrowCone);
+  arrowGroup.position.set(myHouse.position.x, 7, myHouse.position.z);
+  gameScene.add(arrowGroup);
+  arrow = arrowGroup;
+
+  // Trees scattered
+  for (let i = 0; i < 18; i++) {
+    let x, z;
+    let tries = 0;
+    do {
+      x = (Math.random() - 0.5) * 38;
+      z = (Math.random() - 0.5) * 38;
+      tries++;
+    } while ((Math.abs(x) < 3 || Math.abs(z) < 3) && tries < 10);
+    // avoid overlapping with houses
+    let badSpot = houses.some(h => Math.abs(h.position.x - x) < 4 && Math.abs(h.position.z - z) < 4);
+    if (badSpot) continue;
+    const tree = buildTree();
+    tree.position.set(x, 0, z);
+    gameScene.add(tree);
+  }
+
+  // Streetlamps along roads
+  for (let i = -20; i <= 20; i += 10) {
+    if (i === 0) continue;
+    [{x:i, z:3}, {x:i, z:-3}, {x:3, z:i}, {x:-3, z:i}].forEach(p => {
+      const lamp = buildLamp();
+      lamp.position.set(p.x, 0, p.z);
+      gameScene.add(lamp);
+    });
+  }
+
+  // Mailbox + bench near own house
+  const mailbox = buildMailbox();
+  mailbox.position.set(myHouse.position.x - 3, 0, myHouse.position.z - 1);
+  gameScene.add(mailbox);
+  const bench = buildBench();
+  bench.position.set(myHouse.position.x + 3, 0, myHouse.position.z - 1);
+  gameScene.add(bench);
+
+  // Clouds
+  for (let i = 0; i < 8; i++) {
+    const cloud = buildCloud();
+    cloud.position.set((Math.random() - 0.5) * 80, 14 + Math.random() * 6, (Math.random() - 0.5) * 80);
+    cloud.userData.speed = 0.3 + Math.random() * 0.4;
+    gameScene.add(cloud);
+    clouds.push(cloud);
+  }
+
+  // NPC sims
+  for (let i = 0; i < 4; i++) {
+    const npcConfig = {
+      gender: Math.random() < 0.5 ? 'м' : 'ж',
+      skinIdx: Math.floor(Math.random() * SKIN_COLORS.length),
+      hairIdx: Math.floor(Math.random() * HAIR_STYLES.length),
+      hairColorIdx: Math.floor(Math.random() * HAIR_COLORS.length),
+      eyeColorIdx: Math.floor(Math.random() * EYE_COLORS.length),
+      noseSize: Math.floor(Math.random() * 100),
+      chinSize: Math.floor(Math.random() * 100),
+      shirtStyleIdx: Math.floor(Math.random() * SHIRT_STYLES.length),
+      shirtColorIdx: Math.floor(Math.random() * SHIRT_COLORS.length),
+      pantsStyleIdx: Math.floor(Math.random() * PANTS_STYLES.length),
+      pantsColorIdx: Math.floor(Math.random() * PANTS_COLORS.length),
+      shoeColorIdx: Math.floor(Math.random() * SHOE_COLORS.length)
+    };
+    const npc = buildSim(npcConfig);
+    npc.position.set((Math.random() - 0.5) * 24, 0, (Math.random() - 0.5) * 24);
+    npc.userData.targetX = npc.position.x;
+    npc.userData.targetZ = npc.position.z;
+    npc.userData.waitTime = 0;
+    npc.userData.mood = 80 + Math.random() * 20;
+    gameScene.add(npc);
+    npcs.push(npc);
+  }
+}
+
+function buildHouse(cfg) {
+  const g = new THREE.Group();
+  // Base box
+  const wallMat = new THREE.MeshLambertMaterial({ color: cfg.wall, flatShading: true });
+  const houseGeo = new THREE.BoxGeometry(6, 3.5, 6);
+  const walls = new THREE.Mesh(houseGeo, wallMat);
+  walls.position.y = 1.75;
+  g.add(walls);
+
+  // Roof (pyramid)
+  const roofGeo = new THREE.ConeGeometry(4.5, 2, 4);
+  const roofMat = new THREE.MeshLambertMaterial({ color: cfg.roof, flatShading: true });
+  const roof = new THREE.Mesh(roofGeo, roofMat);
+  roof.position.y = 4.5;
+  roof.rotation.y = Math.PI / 4;
+  g.add(roof);
+  g.userData.roof = roof;
+  roofs.push(roof);
+
+  // Door (front = +z side)
+  const doorGeo = new THREE.BoxGeometry(0.9, 1.6, 0.1);
+  const doorMat = new THREE.MeshLambertMaterial({ color: 0x6a3a20, flatShading: true });
+  const door = new THREE.Mesh(doorGeo, doorMat);
+  door.position.set(0, 0.8, 3.02);
+  g.add(door);
+
+  // Windows
+  const winMat = new THREE.MeshLambertMaterial({ color: 0x9bdef5, emissive: 0x305060, flatShading: true });
+  const winGeo = new THREE.BoxGeometry(1, 1, 0.1);
+  const w1 = new THREE.Mesh(winGeo, winMat); w1.position.set(-1.8, 1.8, 3.01); g.add(w1);
+  const w2 = new THREE.Mesh(winGeo, winMat); w2.position.set(1.8, 1.8, 3.01); g.add(w2);
+  const w3 = new THREE.Mesh(winGeo, winMat); w3.position.set(0, 1.8, -3.01); g.add(w3);
+
+  g.userData.config = cfg;
+
+  if (cfg.mine) {
+    // Mark a "door interactable" at front
+    const doorMarker = {
+      position: new THREE.Vector3(0, 0, 3.5),  // local
+      worldPos: new THREE.Vector3(),
+      type: 'door-enter',
+      label: 'войти в дом',
+      object: door,
+      house: g
+    };
+    g.userData.doorMarker = doorMarker;
+    interactables.push(doorMarker);
+
+    // Build interior
+    buildHouseInterior(g);
+  }
+  return g;
+}
+
+function buildHouseInterior(houseGroup) {
+  // Floor
+  const floorGeo = new THREE.PlaneGeometry(5.6, 5.6);
+  const floorMat = new THREE.MeshLambertMaterial({ color: 0xa07050, flatShading: true });
+  const floor = new THREE.Mesh(floorGeo, floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.position.y = 0.05;
+  houseGroup.add(floor);
+
+  // Bed (back-left corner)
+  const bed = new THREE.Group();
+  const bedFrame = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 2.2), new THREE.MeshLambertMaterial({ color: 0x6a4020, flatShading: true }));
+  bedFrame.position.y = 0.2;
+  bed.add(bedFrame);
+  const mattress = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.2, 2), new THREE.MeshLambertMaterial({ color: 0xff80a0, flatShading: true }));
+  mattress.position.y = 0.5;
+  bed.add(mattress);
+  const pillow = new THREE.Mesh(new THREE.BoxGeometry(1.1, 0.15, 0.5), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+  pillow.position.set(0, 0.65, -0.7);
+  bed.add(pillow);
+  bed.position.set(-1.7, 0, -1.7);
+  houseGroup.add(bed);
+  interactables.push({
+    position: new THREE.Vector3(-1.7, 0, -0.5),
+    worldPos: new THREE.Vector3(), type: 'sleep', label: 'спать',
+    object: bed, house: houseGroup, need: 'energy', actionTitle: '💤 Сон...'
+  });
+
+  // Fridge (back-right)
+  const fridge = new THREE.Group();
+  const body = new THREE.Mesh(new THREE.BoxGeometry(0.9, 1.8, 0.7), new THREE.MeshLambertMaterial({ color: 0xeeeeee, flatShading: true }));
+  body.position.y = 0.9;
+  fridge.add(body);
+  const handle = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.4, 0.05), new THREE.MeshLambertMaterial({ color: 0x404040 }));
+  handle.position.set(0.35, 1.1, 0.38);
+  fridge.add(handle);
+  fridge.position.set(1.7, 0, -1.7);
+  houseGroup.add(fridge);
+  interactables.push({
+    position: new THREE.Vector3(1.7, 0, -1.0),
+    worldPos: new THREE.Vector3(), type: 'eat', label: 'поесть',
+    object: fridge, house: houseGroup, need: 'hunger', actionTitle: '🍽 Кушает...'
+  });
+
+  // Toilet (front-right)
+  const toilet = new THREE.Group();
+  const tBase = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.4, 0.6), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+  tBase.position.y = 0.2;
+  toilet.add(tBase);
+  const tSeat = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.1, 16), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+  tSeat.position.y = 0.45;
+  toilet.add(tSeat);
+  const tBack = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.6, 0.15), new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true }));
+  tBack.position.set(0, 0.6, -0.25);
+  toilet.add(tBack);
+  toilet.position.set(1.8, 0, 1.5);
+  houseGroup.add(toilet);
+  interactables.push({
+    position: new THREE.Vector3(1.8, 0, 0.8),
+    worldPos: new THREE.Vector3(), type: 'hygiene', label: 'в туалет',
+    object: toilet, house: houseGroup, need: 'hygiene', actionTitle: '🚿 Гигиена...'
+  });
+
+  // Shower (next to toilet)
+  const shower = new THREE.Group();
+  const sBase = new THREE.Mesh(new THREE.BoxGeometry(0.7, 1.8, 0.7), new THREE.MeshLambertMaterial({ color: 0x9bdef5, transparent: true, opacity: 0.7, flatShading: true }));
+  sBase.position.y = 0.9;
+  shower.add(sBase);
+  shower.position.set(1.0, 0, 1.5);
+  houseGroup.add(shower);
+
+  // TV (left wall)
+  const tvGroup = new THREE.Group();
+  const tvStand = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.4, 0.4), new THREE.MeshLambertMaterial({ color: 0x5a3a20, flatShading: true }));
+  tvStand.position.y = 0.2;
+  tvGroup.add(tvStand);
+  const tvScreen = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.8, 0.1), new THREE.MeshLambertMaterial({ color: 0x202030, emissive: 0x4080ff, emissiveIntensity: 0.4, flatShading: true }));
+  tvScreen.position.set(0, 0.9, 0);
+  tvGroup.add(tvScreen);
+  tvGroup.position.set(-1.8, 0, 1.5);
+  tvGroup.rotation.y = Math.PI / 2;
+  houseGroup.add(tvGroup);
+  interactables.push({
+    position: new THREE.Vector3(-1.0, 0, 1.5),
+    worldPos: new THREE.Vector3(), type: 'fun', label: 'смотреть ТВ',
+    object: tvGroup, house: houseGroup, need: 'fun', actionTitle: '🎉 Смотрит ТВ...'
+  });
+
+  // Sofa (in front of TV)
+  const sofa = new THREE.Group();
+  const sofaBase = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.4, 1.6), new THREE.MeshLambertMaterial({ color: 0x6080c0, flatShading: true }));
+  sofaBase.position.y = 0.2;
+  sofa.add(sofaBase);
+  const sofaBack = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.6, 1.6), new THREE.MeshLambertMaterial({ color: 0x6080c0, flatShading: true }));
+  sofaBack.position.set(-0.2, 0.6, 0);
+  sofa.add(sofaBack);
+  sofa.position.set(-0.3, 0, 1.5);
+  houseGroup.add(sofa);
+
+  // Exit door interactable (inside)
+  interactables.push({
+    position: new THREE.Vector3(0, 0, 2.5),
+    worldPos: new THREE.Vector3(), type: 'door-exit', label: 'выйти на улицу',
+    object: null, house: houseGroup
+  });
+}
+
+function buildTree() {
+  const t = new THREE.Group();
+  const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.22, 1.2, 8), new THREE.MeshLambertMaterial({ color: 0x6a4020, flatShading: true }));
+  trunk.position.y = 0.6;
+  t.add(trunk);
+  const leaves = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.8, 8), new THREE.MeshLambertMaterial({ color: 0x2e8b3a, flatShading: true }));
+  leaves.position.y = 2.0;
+  t.add(leaves);
+  const leaves2 = new THREE.Mesh(new THREE.ConeGeometry(0.7, 1.4, 8), new THREE.MeshLambertMaterial({ color: 0x40a050, flatShading: true }));
+  leaves2.position.y = 2.6;
+  t.add(leaves2);
+  return t;
+}
+
+function buildLamp() {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.08, 3, 8), new THREE.MeshLambertMaterial({ color: 0x404040, flatShading: true }));
+  pole.position.y = 1.5;
+  g.add(pole);
+  const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.18, 10, 8), new THREE.MeshStandardMaterial({ color: 0xffffa0, emissive: 0xffe060, emissiveIntensity: 0.5 }));
+  lamp.position.y = 3.0;
+  g.add(lamp);
+  return g;
+}
+
+function buildMailbox() {
+  const g = new THREE.Group();
+  const pole = new THREE.Mesh(new THREE.BoxGeometry(0.08, 1, 0.08), new THREE.MeshLambertMaterial({ color: 0x404040, flatShading: true }));
+  pole.position.y = 0.5;
+  g.add(pole);
+  const box = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.5), new THREE.MeshLambertMaterial({ color: 0xc04040, flatShading: true }));
+  box.position.y = 1.15;
+  g.add(box);
+  const flag = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.15, 0.18), new THREE.MeshLambertMaterial({ color: 0xff4040, flatShading: true }));
+  flag.position.set(0.22, 1.25, 0);
+  g.add(flag);
+  return g;
+}
+
+function buildBench() {
+  const g = new THREE.Group();
+  const seat = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.1, 0.4), new THREE.MeshLambertMaterial({ color: 0x6a4020, flatShading: true }));
+  seat.position.y = 0.5;
+  g.add(seat);
+  const back = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.5, 0.08), new THREE.MeshLambertMaterial({ color: 0x6a4020, flatShading: true }));
+  back.position.set(0, 0.8, -0.18);
+  g.add(back);
+  const leg1 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.4), new THREE.MeshLambertMaterial({ color: 0x404040 }));
+  leg1.position.set(-0.7, 0.25, 0);
+  const leg2 = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.5, 0.4), new THREE.MeshLambertMaterial({ color: 0x404040 }));
+  leg2.position.set(0.7, 0.25, 0);
+  g.add(leg1, leg2);
+  return g;
+}
+
+function buildCloud() {
+  const g = new THREE.Group();
+  const mat = new THREE.MeshLambertMaterial({ color: 0xffffff, flatShading: true });
+  for (let i = 0; i < 5; i++) {
+    const s = new THREE.Mesh(new THREE.SphereGeometry(0.8 + Math.random() * 0.6, 8, 6), mat);
+    s.position.set((Math.random() - 0.5) * 2.5, Math.random() * 0.3, (Math.random() - 0.5) * 1.4);
+    g.add(s);
+  }
+  return g;
+}
+
+// ============================================
+// INPUT
+// ============================================
+function setupInput() {
+  // Keyboard
+  window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    if (e.key.toLowerCase() === 'e') tryInteract();
+  });
+  window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+
+  // Mouse drag → camera rotate
+  let dragging = false, lastX = 0, lastY = 0;
+  const canvas = document.getElementById('game-canvas');
+  canvas.addEventListener('mousedown', (e) => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    cameraYaw -= dx * 0.005;
+    cameraPitch += dy * 0.005;
+    cameraPitch = Math.max(0.1, Math.min(1.3, cameraPitch));
+  });
+  canvas.addEventListener('wheel', (e) => {
+    cameraDist += e.deltaY * 0.005;
+    cameraDist = Math.max(3, Math.min(15, cameraDist));
+  });
+
+  // Click on object to interact
+  canvas.addEventListener('click', (e) => {
+    if (currentAction) return;
+    // Use nearest interact prompt logic via the "tryInteract"
+    // Simple click: if there is a nearest interactable, trigger it
+    if (nearestInteract) tryInteract();
+  });
+
+  // Touch joystick
+  const joystick = document.getElementById('joystick');
+  const knob = document.getElementById('joystick-knob');
+  let joyActive = false, joyCenter = { x: 0, y: 0 }, joyVec = { x: 0, y: 0 };
+  joystick.addEventListener('touchstart', (e) => {
+    e.preventDefault();
+    const r = joystick.getBoundingClientRect();
+    joyCenter.x = r.left + r.width / 2;
+    joyCenter.y = r.top + r.height / 2;
+    joyActive = true;
+  }, { passive: false });
+  joystick.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    if (!joyActive) return;
+    const t = e.touches[0];
+    let dx = t.clientX - joyCenter.x;
+    let dy = t.clientY - joyCenter.y;
+    const max = 50;
+    const d = Math.sqrt(dx*dx + dy*dy);
+    if (d > max) { dx *= max/d; dy *= max/d; }
+    knob.style.left = (50 + dx/max * 30) + '%';
+    knob.style.top = (50 + dy/max * 30) + '%';
+    joyVec.x = dx / max;
+    joyVec.y = dy / max;
+  }, { passive: false });
+  const endJoy = (e) => {
+    if (e) e.preventDefault();
+    joyActive = false; joyVec.x = 0; joyVec.y = 0;
+    knob.style.left = '50%'; knob.style.top = '50%';
+  };
+  joystick.addEventListener('touchend', endJoy);
+  joystick.addEventListener('touchcancel', endJoy);
+  window.joyVec = joyVec;
+
+  // Touch swipe right side → camera rotate
+  let touchDrag = false, touchLast = { x: 0, y: 0 };
+  window.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    if (!t) return;
+    // Only if not on joystick or interact button
+    if (t.clientX > window.innerWidth * 0.45) {
+      touchDrag = true;
+      touchLast.x = t.clientX; touchLast.y = t.clientY;
+    }
+  }, { passive: true });
+  window.addEventListener('touchmove', (e) => {
+    if (!touchDrag) return;
+    const t = e.touches[0];
+    const dx = t.clientX - touchLast.x;
+    const dy = t.clientY - touchLast.y;
+    touchLast.x = t.clientX; touchLast.y = t.clientY;
+    cameraYaw -= dx * 0.008;
+    cameraPitch += dy * 0.008;
+    cameraPitch = Math.max(0.1, Math.min(1.3, cameraPitch));
+  }, { passive: true });
+  window.addEventListener('touchend', () => { touchDrag = false; });
+
+  document.getElementById('mobile-interact').addEventListener('click', () => {
+    tryInteract();
+  });
+
+  document.getElementById('exit-btn').addEventListener('click', () => {
+    // Force exit
+    exitHouse();
+  });
+
+  window.addEventListener('resize', () => {
+    if (gameRenderer) {
+      gameRenderer.setSize(window.innerWidth, window.innerHeight, false);
+      gameCamera.aspect = window.innerWidth / window.innerHeight;
+      gameCamera.updateProjectionMatrix();
+    }
+  });
+}
+
+// ============================================
+// INTERACTION
+// ============================================
+function tryInteract() {
+  if (currentAction) return;
+  if (!nearestInteract) return;
+  const it = nearestInteract;
+  if (it.type === 'door-enter') {
+    enterHouse();
+  } else if (it.type === 'door-exit') {
+    exitHouse();
+  } else {
+    startAction(it);
+  }
+}
+
+function enterHouse() {
+  playerInside = true;
+  // Hide the roof
+  if (myHouse && myHouse.userData.roof) {
+    myHouse.userData.roof.visible = false;
+  }
+  // Move player just inside
+  playerSim.position.set(myHouse.position.x, 0, myHouse.position.z + 2);
+  cameraDist = 5;
+  cameraPitch = 0.9; // top-down ish
+  document.getElementById('exit-btn').classList.remove('hidden');
+}
+
+function exitHouse() {
+  playerInside = false;
+  if (myHouse && myHouse.userData.roof) {
+    myHouse.userData.roof.visible = true;
+  }
+  playerSim.position.set(myHouse.position.x, 0, myHouse.position.z + 4);
+  cameraDist = 6;
+  cameraPitch = 0.4;
+  document.getElementById('exit-btn').classList.add('hidden');
+}
+
+function startAction(it) {
+  currentAction = it;
+  actionTimer = 0;
+  actionDuration = 4;
+  const panel = document.getElementById('action-progress');
+  panel.classList.add('show');
+  document.getElementById('action-title').textContent = it.actionTitle || ('Действие: ' + it.label);
+  document.getElementById('action-progress-bar').style.width = '0%';
+}
+
+function tickAction(dt) {
+  if (!currentAction) return;
+  actionTimer += dt;
+  const pct = Math.min(100, (actionTimer / actionDuration) * 100);
+  document.getElementById('action-progress-bar').style.width = pct + '%';
+  if (actionTimer >= actionDuration) {
+    if (currentAction.need) {
+      needs[currentAction.need] = Math.min(100, needs[currentAction.need] + 80);
+    }
+    currentAction = null;
+    document.getElementById('action-progress').classList.remove('show');
+  }
+}
+
+// ============================================
+// MAIN GAME LOOP
+// ============================================
+function gameLoop() {
+  const now = performance.now();
+  const dt = Math.min(0.05, (now - gameLastT) / 1000);
+  gameLastT = now;
+
+  if (!currentAction) {
+    updatePlayer(dt);
+    updateNPCs(dt);
+  }
+  updateNeeds(dt);
+  updateGameTime(dt);
+  updateCamera();
+  updatePlumbobs(dt, now / 1000);
+  updateClouds(dt);
+  updateInteractables();
+  updateArrow(dt);
+  tickAction(dt);
+  updateHUD();
+
+  gameRenderer.render(gameScene, gameCamera);
+  gameAnimId = requestAnimationFrame(gameLoop);
+}
+
+function updatePlayer(dt) {
+  let fwd = 0, side = 0;
+  if (keys['w'] || keys['ц'] || keys['arrowup']) fwd += 1;
+  if (keys['s'] || keys['ы'] || keys['arrowdown']) fwd -= 1;
+  if (keys['a'] || keys['ф'] || keys['arrowleft']) side -= 1;
+  if (keys['d'] || keys['в'] || keys['arrowright']) side += 1;
+
+  if (window.joyVec) {
+    if (Math.abs(window.joyVec.x) > 0.1) side += window.joyVec.x;
+    if (Math.abs(window.joyVec.y) > 0.1) fwd -= window.joyVec.y;
+  }
+
+  const speed = 4;
+  // Movement relative to camera yaw
+  const cosY = Math.cos(cameraYaw);
+  const sinY = Math.sin(cameraYaw);
+  const moveX = (side * cosY + fwd * sinY) * speed * dt;
+  const moveZ = (-side * sinY + fwd * cosY) * speed * dt;
+
+  const newX = playerSim.position.x + moveX;
+  const newZ = playerSim.position.z + moveZ;
+
+  // bounds
+  if (playerInside) {
+    // confined to house interior
+    const cx = myHouse.position.x, cz = myHouse.position.z;
+    playerSim.position.x = Math.max(cx - 2.6, Math.min(cx + 2.6, newX));
+    playerSim.position.z = Math.max(cz - 2.6, Math.min(cz + 2.6, newZ));
+  } else {
+    playerSim.position.x = Math.max(-TOWN_BOUNDS, Math.min(TOWN_BOUNDS, newX));
+    playerSim.position.z = Math.max(-TOWN_BOUNDS, Math.min(TOWN_BOUNDS, newZ));
+
+    // Collision with houses (don't enter into them through walls)
+    houses.forEach(h => {
+      if (h === myHouse && playerInside) return;
+      const dx = playerSim.position.x - h.position.x;
+      const dz = playerSim.position.z - h.position.z;
+      // Allow entering own house door (front side, +z, x near 0)
+      if (h === myHouse && Math.abs(dx) < 0.7 && dz > 1.8 && dz < 3.0) {
+        // door area, allow
+        return;
+      }
+      if (Math.abs(dx) < 3.2 && Math.abs(dz) < 3.2) {
+        // push out
+        const overlapX = 3.2 - Math.abs(dx);
+        const overlapZ = 3.2 - Math.abs(dz);
+        if (overlapX < overlapZ) {
+          playerSim.position.x = h.position.x + Math.sign(dx) * 3.2;
+        } else {
+          playerSim.position.z = h.position.z + Math.sign(dz) * 3.2;
+        }
+      }
+    });
+  }
+
+  const isWalking = Math.abs(moveX) > 0.001 || Math.abs(moveZ) > 0.001;
+  if (isWalking) {
+    const ang = Math.atan2(moveX, moveZ);
+    // smooth rotation
+    let cur = playerSim.rotation.y;
+    let diff = ang - cur;
+    while (diff > Math.PI) diff -= 2 * Math.PI;
+    while (diff < -Math.PI) diff += 2 * Math.PI;
+    playerSim.rotation.y = cur + diff * 0.2;
+  }
+  animateSimWalk(playerSim, isWalking, performance.now() / 1000);
+}
+
+function updateNPCs(dt) {
+  npcs.forEach(npc => {
+    if (npc.userData.waitTime > 0) {
+      npc.userData.waitTime -= dt;
+      animateSimWalk(npc, false, performance.now() / 1000);
+      return;
+    }
+    const dx = npc.userData.targetX - npc.position.x;
+    const dz = npc.userData.targetZ - npc.position.z;
+    const d = Math.sqrt(dx*dx + dz*dz);
+    if (d < 0.3) {
+      // Pick a new target
+      npc.userData.targetX = (Math.random() - 0.5) * 30;
+      npc.userData.targetZ = (Math.random() - 0.5) * 30;
+      npc.userData.waitTime = 1 + Math.random() * 2;
+      animateSimWalk(npc, false, performance.now() / 1000);
+      return;
+    }
+    const sp = 1.6;
+    npc.position.x += (dx / d) * sp * dt;
+    npc.position.z += (dz / d) * sp * dt;
+    npc.rotation.y = Math.atan2(dx, dz);
+    animateSimWalk(npc, true, performance.now() / 1000);
+
+    // Update NPC mood slowly
+    npc.userData.mood -= dt * 0.5;
+    if (npc.userData.mood < 0) npc.userData.mood = 100;
+    updatePlumbobMood(npc, npc.userData.mood);
+  });
+}
+
+function updateNeeds(dt) {
+  if (currentAction) {
+    // Other needs still decay (slightly)
+    for (const k of ['hunger', 'energy', 'fun', 'hygiene']) {
+      if (k === currentAction.need) continue;
+      needs[k] = Math.max(0, needs[k] - NEED_DECAY * dt * 0.3);
+    }
+    return;
+  }
+  for (const k of ['hunger', 'energy', 'fun', 'hygiene']) {
+    needs[k] = Math.max(0, needs[k] - NEED_DECAY * dt);
+  }
+}
+
+function updateGameTime(dt) {
+  gameTime += dt * 30; // 30x speed: 1 real second = 30 in-game minutes? Actually slower: 1 sec = 0.5 min
+  // Tone down: use dt * 2 instead so 1 real second = 2 in-game minutes (1 day = 12 real minutes)
+  // Already added 30*dt — let's reset and use a moderate rate:
+  // Just keep gameTime accumulator; we'll display below
+  if (gameTime >= 24 * 60) {
+    gameTime -= 24 * 60;
+    gameDay++;
+  }
+}
+
+function updateCamera() {
+  // Third-person camera around player
+  const tx = playerSim.position.x;
+  const ty = playerSim.position.y + 1.2;
+  const tz = playerSim.position.z;
+  const camX = tx + Math.sin(cameraYaw) * Math.cos(cameraPitch) * cameraDist;
+  const camY = ty + Math.sin(cameraPitch) * cameraDist;
+  const camZ = tz + Math.cos(cameraYaw) * Math.cos(cameraPitch) * cameraDist;
+  gameCamera.position.set(camX, camY, camZ);
+  gameCamera.lookAt(tx, ty, tz);
+}
+
+function updatePlumbobs(dt, t) {
+  // Player plumbob
+  if (playerSim && playerSim.userData.plumbob) {
+    const p = playerSim.userData.plumbob;
+    p.rotation.y += dt * 2;
+    p.position.y = playerSim.userData.plumbobBaseY + Math.sin(t * 2) * 0.1;
+    // Compute mood
+    const minNeed = Math.min(needs.hunger, needs.energy, needs.fun, needs.hygiene);
+    updatePlumbobMood(playerSim, minNeed);
+  }
+  // NPC plumbobs
+  npcs.forEach(npc => {
+    if (npc.userData.plumbob) {
+      const p = npc.userData.plumbob;
+      p.rotation.y += dt * 2;
+      p.position.y = npc.userData.plumbobBaseY + Math.sin(t * 2 + npc.position.x) * 0.1;
+    }
+  });
+}
+
+function updateClouds(dt) {
+  clouds.forEach(c => {
+    c.position.x += c.userData.speed * dt;
+    if (c.position.x > 45) c.position.x = -45;
+  });
+}
+
+function updateArrow(dt) {
+  if (arrow) {
+    arrow.rotation.y += dt * 1.5;
+    arrow.position.y = 7 + Math.sin(performance.now() / 400) * 0.3;
+  }
+}
+
+function updateInteractables() {
+  // Find nearest interactable within range
+  nearestInteract = null;
+  let minDist = 1.8; // interact range
+  interactables.forEach(it => {
+    // Compute world pos
+    if (it.house) {
+      it.worldPos.set(
+        it.house.position.x + it.position.x,
+        it.position.y,
+        it.house.position.z + it.position.z
+      );
+    } else {
+      it.worldPos.copy(it.position);
+    }
+    // Filter by inside/outside
+    if (playerInside) {
+      // Only interactables inside the house (objects with house === myHouse, but NOT door-enter)
+      if (it.house !== myHouse) return;
+      if (it.type === 'door-enter') return;
+    } else {
+      // Only door-enter or external
+      if (it.type === 'door-exit') return;
+      if (it.type !== 'door-enter') return; // only doors are outside interactables for now
+    }
+    const dx = playerSim.position.x - it.worldPos.x;
+    const dz = playerSim.position.z - it.worldPos.z;
+    const d = Math.sqrt(dx*dx + dz*dz);
+    if (d < minDist) {
+      minDist = d;
+      nearestInteract = it;
+    }
+  });
+
+  const prompt = document.getElementById('interact-prompt');
+  const mobileBtn = document.getElementById('mobile-interact');
+  if (nearestInteract && !currentAction) {
+    prompt.classList.add('show');
+    document.getElementById('interact-label').textContent = nearestInteract.label;
+    mobileBtn.classList.add('show');
+  } else {
+    prompt.classList.remove('show');
+    mobileBtn.classList.remove('show');
+  }
+}
+
+function updateHUD() {
+  // Need bars
+  const setBar = (id, val) => {
+    const bar = document.getElementById(id);
+    bar.style.width = val + '%';
+    bar.classList.remove('med', 'low');
+    if (val < 20) bar.classList.add('low');
+    else if (val < 50) bar.classList.add('med');
+  };
+  setBar('bar-hunger', needs.hunger);
+  setBar('bar-energy', needs.energy);
+  setBar('bar-fun', needs.fun);
+  setBar('bar-hygiene', needs.hygiene);
+
+  // Mood
+  const minNeed = Math.min(needs.hunger, needs.energy, needs.fun, needs.hygiene);
+  let moodTxt = '😊 Счастлив';
+  if (minNeed < 20) moodTxt = '😡 Несчастен';
+  else if (minNeed < 50) moodTxt = '😐 Так себе';
+  document.getElementById('hud-mood').textContent = moodTxt;
+
+  // Clock
+  const h = Math.floor(gameTime / 60);
+  const m = Math.floor(gameTime % 60);
+  document.getElementById('hud-clock').textContent =
+    String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+  document.getElementById('hud-day').textContent = 'День ' + gameDay;
+}
+
+// ============================================
+// BUTTON WIRING (title screen)
+// ============================================
+document.getElementById('btn-create').addEventListener('click', () => {
+  showCAS();
+});
+document.getElementById('btn-quick').addEventListener('click', () => {
+  // Use default sim
+  document.getElementById('hud-name').textContent = sim.name;
+  showGame();
+});
+
+// ============================================
+// INIT
+// ============================================
+window.addEventListener('load', () => {
+  showTitle();
+});
+
+// Also start immediately in case load already fired
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+  showTitle();
+}
+
+</script>
+</body>
+</html>
