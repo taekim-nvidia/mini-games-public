@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Шрек: Болотный Ритм</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #1a3a1a;
+    font-family: 'Comic Sans MS', cursive, sans-serif;
+    overflow: hidden;
+    user-select: none;
+    color: #fff;
+  }
+  #game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    background: linear-gradient(to bottom, #4a7c3a 0%, #2d5a2d 60%, #3d2817 100%);
+    overflow: hidden;
+    cursor: crosshair;
+  }
+  .ui {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 10;
+    font-size: 22px;
+    text-shadow: 2px 2px 0 #000;
+  }
+  .ui.right { left: auto; right: 12px; text-align: right; }
+  .shrek {
+    position: absolute;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 100px;
+    line-height: 1;
+    transition: transform 0.15s;
+    z-index: 5;
+    filter: drop-shadow(3px 3px 0 #000);
+  }
+  .shrek.bounce { animation: bounce 0.3s; }
+  @keyframes bounce {
+    0%, 100% { transform: translateX(-50%) scale(1); }
+    50% { transform: translateX(-50%) scale(1.15); }
+  }
+  .swamp {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 80px;
+    background: linear-gradient(to bottom, #3d2817 0%, #1a0f08 100%);
+    border-top: 4px solid #2a1a0a;
+  }
+  .onion {
+    position: absolute;
+    font-size: 50px;
+    cursor: pointer;
+    transition: transform 0.1s;
+    filter: drop-shadow(2px 2px 0 #000);
+    z-index: 3;
+  }
+  .onion:hover { transform: scale(1.2); }
+  .onion.bad { /* пугающие штуки — НЕ кликать */ }
+  .pop {
+    position: absolute;
+    font-size: 30px;
+    color: #ffeb3b;
+    font-weight: bold;
+    pointer-events: none;
+    text-shadow: 2px 2px 0 #000;
+    animation: popUp 0.8s forwards;
+    z-index: 8;
+  }
+  @keyframes popUp {
+    0% { transform: translateY(0) scale(1); opacity: 1; }
+    100% { transform: translateY(-80px) scale(1.5); opacity: 0; }
+  }
+  #title, #gameover {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
+    text-align: center;
+    padding: 20px;
+  }
+  h1 { font-size: 56px; color: #8fc44f; text-shadow: 4px 4px 0 #000; margin-bottom: 10px; }
+  h2 { font-size: 36px; color: #ffeb3b; text-shadow: 3px 3px 0 #000; margin-bottom: 20px; }
+  p { font-size: 20px; margin: 8px 0; max-width: 500px; }
+  button {
+    margin-top: 20px;
+    padding: 14px 40px;
+    font-size: 24px;
+    background: #8fc44f;
+    color: #1a3a1a;
+    border: 4px solid #1a3a1a;
+    border-radius: 8px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 4px 4px 0 #000;
+  }
+  button:hover { background: #a5db64; transform: translate(-2px, -2px); box-shadow: 6px 6px 0 #000; }
+  button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 #000; }
+  .hidden { display: none !important; }
+  .cloud {
+    position: absolute;
+    font-size: 60px;
+    opacity: 0.6;
+    z-index: 1;
+  }
+  .quote {
+    position: absolute;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #fff;
+    color: #000;
+    padding: 10px 18px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    white-space: nowrap;
+    z-index: 6;
+    opacity: 0;
+    transition: opacity 0.3s;
+    border: 3px solid #000;
+  }
+  .quote::after {
+    content: '';
+    position: absolute;
+    bottom: -12px;
+    left: 50%;
+    transform: translateX(-50%);
+    border: 8px solid transparent;
+    border-top-color: #000;
+  }
+  .quote.show { opacity: 1; }
+</style>
+</head>
+<body>
+<div id="game">
+  <div class="cloud" style="top:8%; left:10%;">☁️</div>
+  <div class="cloud" style="top:15%; right:15%;">☁️</div>
+  <div class="cloud" style="top:5%; left:60%;">☁️</div>
+
+  <div class="ui">⏱️ <span id="time">30</span>с</div>
+  <div class="ui right">🧅 <span id="score">0</span></div>
+
+  <div class="quote" id="quote"></div>
+  <div class="shrek" id="shrek">🧌</div>
+  <div class="swamp"></div>
+
+  <div id="title">
+    <h1>ШРЕК</h1>
+    <h2>Болотный Ритм</h2>
+    <p>Только Шрек. Никаких ослов. Никаких принцесс.</p>
+    <p>🧅 Лови луковицы — они как огры, многослойные.</p>
+    <p>❌ Не трогай факелы — селяне их любят, а Шрек нет.</p>
+    <button id="start">НАЧАТЬ</button>
+  </div>
+
+  <div id="gameover" class="hidden">
+    <h1>БОЛОТО ЗАКРЫТО</h1>
+    <h2>Собрано луковиц: <span id="final">0</span></h2>
+    <p id="verdict"></p>
+    <button id="restart">ЕЩЁ РАЗ</button>
+  </div>
+</div>
+
+<script>
+const game = document.getElementById('game');
+const shrek = document.getElementById('shrek');
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('time');
+const titleScreen = document.getElementById('title');
+const gameoverScreen = document.getElementById('gameover');
+const finalEl = document.getElementById('final');
+const verdictEl = document.getElementById('verdict');
+const quoteEl = document.getElementById('quote');
+
+const QUOTES = [
+  "Луковицы имеют слои!",
+  "Это моё болото!",
+  "Огры как лук!",
+  "Убирайтесь из моего болота!",
+  "Лучше, чем парфе!",
+  "Что ты делаешь в моём болоте?!"
+];
+
+let score = 0;
+let timeLeft = 30;
+let playing = false;
+let spawnTimer = null;
+let tickTimer = null;
+let quoteTimer = null;
+
+function showQuote() {
+  const q = QUOTES[Math.floor(Math.random() * QUOTES.length)];
+  quoteEl.textContent = q;
+  quoteEl.classList.add('show');
+  clearTimeout(quoteTimer);
+  quoteTimer = setTimeout(() => quoteEl.classList.remove('show'), 1500);
+}
+
+function spawnThing() {
+  if (!playing) return;
+  const isBad = Math.random() < 0.25;
+  const el = document.createElement('div');
+  el.className = 'onion' + (isBad ? ' bad' : '');
+  el.textContent = isBad ? '🔥' : '🧅';
+  const w = window.innerWidth;
+  el.style.left = (Math.random() * (w - 80) + 20) + 'px';
+  el.style.top = '-60px';
+  game.appendChild(el);
+
+  let y = -60;
+  const speed = 2 + Math.random() * 3 + (30 - timeLeft) * 0.05;
+  const fall = setInterval(() => {
+    if (!playing) { clearInterval(fall); el.remove(); return; }
+    y += speed;
+    el.style.top = y + 'px';
+    if (y > window.innerHeight - 100) {
+      clearInterval(fall);
+      el.remove();
+    }
+  }, 16);
+
+  el.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (!playing) return;
+    const rect = el.getBoundingClientRect();
+    const pop = document.createElement('div');
+    pop.className = 'pop';
+    pop.style.left = rect.left + 'px';
+    pop.style.top = rect.top + 'px';
+    if (isBad) {
+      pop.textContent = '-5 🔥';
+      pop.style.color = '#ff5252';
+      score = Math.max(0, score - 5);
+    } else {
+      pop.textContent = '+1';
+      score += 1;
+      if (Math.random() < 0.2) showQuote();
+    }
+    game.appendChild(pop);
+    setTimeout(() => pop.remove(), 800);
+    scoreEl.textContent = score;
+    shrek.classList.remove('bounce');
+    void shrek.offsetWidth;
+    shrek.classList.add('bounce');
+    clearInterval(fall);
+    el.remove();
+  });
+}
+
+function tick() {
+  timeLeft--;
+  timeEl.textContent = timeLeft;
+  if (timeLeft <= 0) endGame();
+}
+
+function startGame() {
+  score = 0;
+  timeLeft = 30;
+  playing = true;
+  scoreEl.textContent = 0;
+  timeEl.textContent = 30;
+  titleScreen.classList.add('hidden');
+  gameoverScreen.classList.add('hidden');
+  document.querySelectorAll('.onion, .pop').forEach(e => e.remove());
+  spawnTimer = setInterval(spawnThing, 600);
+  tickTimer = setInterval(tick, 1000);
+}
+
+function endGame() {
+  playing = false;
+  clearInterval(spawnTimer);
+  clearInterval(tickTimer);
+  document.querySelectorAll('.onion').forEach(e => e.remove());
+  finalEl.textContent = score;
+  let v;
+  if (score >= 40) v = "🏆 Настоящий огр! Болото в безопасности.";
+  else if (score >= 25) v = "👍 Неплохо. Шрек горд.";
+  else if (score >= 10) v = "😐 Сойдёт. Но Фиона была бы недовольна.";
+  else v = "😤 Шрек разочарован. Иди в болото и подумай.";
+  verdictEl.textContent = v;
+  gameoverScreen.classList.remove('hidden');
+}
+
+document.getElementById('start').addEventListener('click', startGame);
+document.getElementById('restart').addEventListener('click', startGame);
+
+// Шрек следит за курсором
+game.addEventListener('mousemove', (e) => {
+  if (!playing) return;
+  const w = window.innerWidth;
+  const x = Math.max(60, Math.min(w - 60, e.clientX));
+  shrek.style.left = x + 'px';
+});
+</script>
+</body>
+</html>
