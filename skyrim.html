@@ -153,6 +153,7 @@
   #btnSword { bottom: 30px; }
   #btnShout { bottom: 115px; right: 100px; }
   #btnJump  { bottom: 115px; }
+  #btnOpen  { bottom: 200px; right: 30px; display: none; }
 </style>
 </head>
 <body>
@@ -195,6 +196,7 @@
   <button class="mob-btn" id="btnJump"  type="button"><span class="emoji">⤴</span><span class="label">JUMP</span></button>
   <button class="mob-btn" id="btnShout" type="button"><span class="emoji">🌀</span><span class="label">SHOUT</span></button>
   <button class="mob-btn" id="btnSword" type="button"><span class="emoji">🗡</span><span class="label">SWORD</span></button>
+  <button class="mob-btn" id="btnOpen"  type="button"><span class="emoji">📦</span><span class="label">ОТКРЫТЬ</span></button>
 </div>
 
 <div id="win">
@@ -392,45 +394,236 @@ function buildTrees() {
 }
 
 // -------- Village (wooden huts) --------
+// Collision: list of world-space AABBs in XZ that block the player.
+// Each entry: { minX, maxX, minZ, maxZ }
+const wallColliders = [];
+// Fireplace lights & chests for per-frame updates / interaction
+const fireplaceLights = [];
+const chests = []; // { group, lid, pos: Vector3, opened: bool }
+
+function addWallCollider(group, localX, localZ, sx, sz) {
+  // Build a world-space AABB from a wall placed at local (localX, localZ)
+  // with size (sx along local X, sz along local Z), accounting for group rotation/pos.
+  // The hut group is rotated around Y by group.rotation.y, positioned at group.position.
+  const cy = group.rotation.y;
+  const cosY = Math.cos(cy), sinY = Math.sin(cy);
+  // 4 local corners (XZ)
+  const hx = sx / 2, hz = sz / 2;
+  const corners = [
+    [localX - hx, localZ - hz],
+    [localX + hx, localZ - hz],
+    [localX + hx, localZ + hz],
+    [localX - hx, localZ + hz],
+  ];
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  corners.forEach(c => {
+    // rotate around Y, then translate
+    const wx = c[0] * cosY + c[1] * sinY + group.position.x;
+    const wz = -c[0] * sinY + c[1] * cosY + group.position.z;
+    if (wx < minX) minX = wx; if (wx > maxX) maxX = wx;
+    if (wz < minZ) minZ = wz; if (wz > maxZ) maxZ = wz;
+  });
+  wallColliders.push({ minX, maxX, minZ, maxZ });
+}
+
 function buildVillage() {
-  const wallMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2c });
-  const roofMat = new THREE.MeshLambertMaterial({ color: 0x3a2418 });
-  const snowRoofMat = new THREE.MeshLambertMaterial({ color: 0xe0e8f0 });
+  // Shared materials (one set for all huts -> performance)
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x6b4423, flatShading: true });
+  const darkWoodMat = new THREE.MeshLambertMaterial({ color: 0x3d2817, flatShading: true });
+  const roofMat = new THREE.MeshLambertMaterial({ color: 0x3a2418, flatShading: true });
+  const snowRoofMat = new THREE.MeshLambertMaterial({ color: 0xe0e8f0, flatShading: true });
+  const stoneMat = new THREE.MeshLambertMaterial({ color: 0x6e6e6e, flatShading: true });
+  const logMat = new THREE.MeshLambertMaterial({ color: 0xff5522, flatShading: true });
+  const bedrollMat = new THREE.MeshLambertMaterial({ color: 0x2a1a10, flatShading: true });
+
+  // Hut footprint constants
+  const W = 5;       // width  (along local X)
+  const D = 4;       // depth  (along local Z)
+  const WALL_H = 2.5;
+  const WALL_T = 0.2;
+  const DOOR_W = 1.5;
+  const DOOR_H = 2.0;
+
+  // Side panels of the front wall (front = +Z face)
+  const sidePanelW = (W - DOOR_W) / 2;
 
   const huts = [
-    { x: -10, z: -5, rot: 0.2 },
-    { x: 4, z: -10, rot: -0.4 },
-    { x: -3, z: -18, rot: 0.6 },
-    { x: 12, z: -3, rot: -0.1 },
+    { x: -10, z: -5 },
+    { x:   4, z: -10 },
+    { x:  -3, z: -18 },
+    { x:  12, z: -3 },
   ];
+
+  // Campfire is at (0, -8); doorways face the campfire.
+  const campX = 0, campZ = -8;
 
   huts.forEach(h => {
     const group = new THREE.Group();
     const ground = getHeightAt(h.x, h.z);
 
-    const body = new THREE.Mesh(new THREE.BoxGeometry(4, 2.4, 3), wallMat);
-    body.position.y = 1.2;
-    group.add(body);
+    // Orient hut so its +Z (front, with doorway) faces the campfire.
+    // Default forward in local space is +Z. We want the world vector
+    // from hut -> campfire to align with the hut's local +Z axis.
+    // For a Y-rotation rot, local +Z in world is (sin(rot), 0, cos(rot)).
+    const dx = campX - h.x;
+    const dz = campZ - h.z;
+    const rot = Math.atan2(dx, dz);
+    group.position.set(h.x, ground, h.z);
+    group.rotation.y = rot;
 
-    // triangular roof = cone with 4 sides
-    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.6, 4), roofMat);
-    roof.position.y = 2.4 + 0.8;
+    // ---- Floor (raised wooden planks) ----
+    const floor = new THREE.Mesh(
+      new THREE.BoxGeometry(W, 0.1, D),
+      darkWoodMat
+    );
+    floor.position.y = 0.05;
+    group.add(floor);
+
+    // ---- Walls ----
+    // Back wall (at local -Z)
+    const backWall = new THREE.Mesh(new THREE.BoxGeometry(W, WALL_H, WALL_T), wallMat);
+    backWall.position.set(0, WALL_H / 2, -D / 2);
+    group.add(backWall);
+    addWallCollider(group, 0, -D / 2, W, WALL_T);
+
+    // Left wall (at local -X)
+    const leftWall = new THREE.Mesh(new THREE.BoxGeometry(WALL_T, WALL_H, D), wallMat);
+    leftWall.position.set(-W / 2, WALL_H / 2, 0);
+    group.add(leftWall);
+    addWallCollider(group, -W / 2, 0, WALL_T, D);
+
+    // Right wall (at local +X)
+    const rightWall = new THREE.Mesh(new THREE.BoxGeometry(WALL_T, WALL_H, D), wallMat);
+    rightWall.position.set(W / 2, WALL_H / 2, 0);
+    group.add(rightWall);
+    addWallCollider(group, W / 2, 0, WALL_T, D);
+
+    // Front wall: two side panels + lintel above doorway. Doorway is the gap.
+    const frontZ = D / 2;
+    // Left side panel of front wall
+    const frontLeftX = -W / 2 + sidePanelW / 2;
+    const frontLeft = new THREE.Mesh(new THREE.BoxGeometry(sidePanelW, WALL_H, WALL_T), wallMat);
+    frontLeft.position.set(frontLeftX, WALL_H / 2, frontZ);
+    group.add(frontLeft);
+    addWallCollider(group, frontLeftX, frontZ, sidePanelW, WALL_T);
+
+    // Right side panel of front wall
+    const frontRightX = W / 2 - sidePanelW / 2;
+    const frontRight = new THREE.Mesh(new THREE.BoxGeometry(sidePanelW, WALL_H, WALL_T), wallMat);
+    frontRight.position.set(frontRightX, WALL_H / 2, frontZ);
+    group.add(frontRight);
+    addWallCollider(group, frontRightX, frontZ, sidePanelW, WALL_T);
+
+    // Lintel above doorway (visual only; player is short enough to not collide above 2m,
+    // but our collision is XZ-only so we deliberately don't add a collider here
+    // -- that's the doorway opening at ground level).
+    const lintelH = WALL_H - DOOR_H;
+    if (lintelH > 0) {
+      const lintel = new THREE.Mesh(new THREE.BoxGeometry(DOOR_W, lintelH, WALL_T), wallMat);
+      lintel.position.set(0, DOOR_H + lintelH / 2, frontZ);
+      group.add(lintel);
+    }
+
+    // ---- Roof (cone, 4 sides = pyramid) ----
+    const roofR = Math.max(W, D) * 0.62;
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(roofR, 1.7, 4), roofMat);
+    roof.position.y = WALL_H + 0.85;
     roof.rotation.y = Math.PI / 4;
     group.add(roof);
 
-    // snow cap
-    const snowCap = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 4), snowRoofMat);
-    snowCap.position.y = 2.4 + 1.45;
+    const snowCap = new THREE.Mesh(new THREE.ConeGeometry(roofR * 0.55, 0.6, 4), snowRoofMat);
+    snowCap.position.y = WALL_H + 1.55;
     snowCap.rotation.y = Math.PI / 4;
     group.add(snowCap);
 
-    group.position.set(h.x, ground, h.z);
-    group.rotation.y = h.rot;
+    // ---- Interior furnishings ----
+    // Fireplace: stone ring at back-left corner area
+    const fireplace = new THREE.Group();
+    const fpX = -W / 2 + 1.0;
+    const fpZ = -D / 2 + 1.0;
+    fireplace.position.set(fpX, 0, fpZ);
+    for (let i = 0; i < 8; i++) {
+      const a = (i / 8) * Math.PI * 2;
+      const stone = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.25, 0.25), stoneMat);
+      stone.position.set(Math.cos(a) * 0.5, 0.18, Math.sin(a) * 0.5);
+      fireplace.add(stone);
+    }
+    // Logs (red/orange boxes)
+    for (let i = 0; i < 3; i++) {
+      const log = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.12, 0.12), logMat);
+      log.position.set(0, 0.15, (i - 1) * 0.15);
+      log.rotation.y = (i % 2 === 0 ? 0.3 : -0.3);
+      fireplace.add(log);
+    }
+    // Flickering point light
+    const fireLight = new THREE.PointLight(0xff8844, 2.5, 8);
+    fireLight.position.set(0, 0.6, 0);
+    fireplaceLights.push({ light: fireLight, base: 2.5, phase: Math.random() * Math.PI * 2 });
+    fireplace.add(fireLight);
+    group.add(fireplace);
+
+    // Table: flat top + 4 legs near back-right
+    const tableGroup = new THREE.Group();
+    const tableX = W / 2 - 1.2;
+    const tableZ = -D / 2 + 1.2;
+    tableGroup.position.set(tableX, 0, tableZ);
+    const tableTop = new THREE.Mesh(new THREE.BoxGeometry(1.2, 0.08, 0.8), wallMat);
+    tableTop.position.y = 0.85;
+    tableGroup.add(tableTop);
+    const legPos = [[0.5, 0.3], [-0.5, 0.3], [0.5, -0.3], [-0.5, -0.3]];
+    legPos.forEach(([lx, lz]) => {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.85, 0.08), wallMat);
+      leg.position.set(lx, 0.42, lz);
+      tableGroup.add(leg);
+    });
+    group.add(tableGroup);
+    // Table collider (small AABB in world space)
+    addWallCollider(group, tableX, tableZ, 1.2, 0.8);
+
+    // Bench beside table (longer thin box, no collision)
+    const bench = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.1, 0.3), wallMat);
+    bench.position.set(tableX, 0.45, tableZ + 0.7);
+    group.add(bench);
+    const benchLegL = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.25), wallMat);
+    benchLegL.position.set(tableX - 0.55, 0.2, tableZ + 0.7);
+    group.add(benchLegL);
+    const benchLegR = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.4, 0.25), wallMat);
+    benchLegR.position.set(tableX + 0.55, 0.2, tableZ + 0.7);
+    group.add(benchLegR);
+
+    // Chest near back wall (smaller box + darker lid)
+    const chestGroup = new THREE.Group();
+    const chestLX = 0.0;
+    const chestLZ = -D / 2 + 0.5;
+    chestGroup.position.set(chestLX, 0, chestLZ);
+    const chestBody = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.5, 0.5), wallMat);
+    chestBody.position.y = 0.25;
+    chestGroup.add(chestBody);
+    const chestLid = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.12, 0.52), darkWoodMat);
+    chestLid.position.y = 0.55;
+    chestGroup.add(chestLid);
+    group.add(chestGroup);
+    addWallCollider(group, chestLX, chestLZ, 0.8, 0.5);
+    // World-space chest position for interaction range checks
+    const cosY = Math.cos(rot), sinY = Math.sin(rot);
+    const chestWorldX = chestLX * cosY + chestLZ * sinY + h.x;
+    const chestWorldZ = -chestLX * sinY + chestLZ * cosY + h.z;
+    chests.push({
+      group: chestGroup,
+      lid: chestLid,
+      pos: new THREE.Vector3(chestWorldX, ground, chestWorldZ),
+      opened: false,
+    });
+
+    // Bedroll: flat dark rectangle on the floor along right wall
+    const bedroll = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.08, 1.8), bedrollMat);
+    bedroll.position.set(W / 2 - 0.6, 0.14, D / 2 - 1.4);
+    group.add(bedroll);
+
     scene.add(group);
   });
 
-  // central campfire stone ring
-  const stoneMat = new THREE.MeshLambertMaterial({ color: 0x555a62 });
+  // central campfire stone ring (unchanged behavior, restyled materials reused)
   const fireMat = new THREE.MeshBasicMaterial({ color: 0xff8030 });
   const fireRing = new THREE.Group();
   for (let i = 0; i < 8; i++) {
@@ -442,8 +635,88 @@ function buildVillage() {
   const flame = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 6), fireMat);
   flame.position.y = 0.5;
   fireRing.add(flame);
-  fireRing.position.set(0, getHeightAt(0, -8), -8);
+  fireRing.position.set(0, getHeightAt(campX, campZ), campZ);
   scene.add(fireRing);
+}
+
+// Collide player against wallColliders AABBs in XZ. Pushes player out along
+// the shortest axis so they slide along walls.
+const PLAYER_RADIUS = 0.4;
+function collideWalls() {
+  for (let i = 0; i < wallColliders.length; i++) {
+    const c = wallColliders[i];
+    const px = player.pos.x;
+    const pz = player.pos.z;
+    // Closest point on AABB to player center
+    const cx = Math.max(c.minX, Math.min(px, c.maxX));
+    const cz = Math.max(c.minZ, Math.min(pz, c.maxZ));
+    const dx = px - cx;
+    const dz = pz - cz;
+    const distSq = dx * dx + dz * dz;
+    if (distSq < PLAYER_RADIUS * PLAYER_RADIUS) {
+      if (distSq > 1e-6) {
+        // Player center is outside the box: push along the closest-point normal
+        const dist = Math.sqrt(distSq);
+        const push = PLAYER_RADIUS - dist;
+        player.pos.x += (dx / dist) * push;
+        player.pos.z += (dz / dist) * push;
+      } else {
+        // Player center is inside the box: push out along shortest axis
+        const leftPen   = px - c.minX;
+        const rightPen  = c.maxX - px;
+        const frontPen  = pz - c.minZ;
+        const backPen   = c.maxZ - pz;
+        const minPen = Math.min(leftPen, rightPen, frontPen, backPen);
+        if (minPen === leftPen)       player.pos.x = c.minX - PLAYER_RADIUS;
+        else if (minPen === rightPen) player.pos.x = c.maxX + PLAYER_RADIUS;
+        else if (minPen === frontPen) player.pos.z = c.minZ - PLAYER_RADIUS;
+        else                          player.pos.z = c.maxZ + PLAYER_RADIUS;
+      }
+    }
+  }
+}
+
+// Per-frame interior updates: fireplace flicker + chest proximity hint
+let _interiorTime = 0;
+function updateInteriors(dt) {
+  _interiorTime += dt;
+  for (let i = 0; i < fireplaceLights.length; i++) {
+    const fl = fireplaceLights[i];
+    fl.light.intensity = fl.base * (Math.sin(_interiorTime * 12 + fl.phase) * 0.15 + 1.0);
+  }
+  // Find closest unopened chest within 1.2m
+  let near = null;
+  let bestDist = 1.2 * 1.2;
+  for (let i = 0; i < chests.length; i++) {
+    const ch = chests[i];
+    if (ch.opened) continue;
+    const dx = ch.pos.x - player.pos.x;
+    const dz = ch.pos.z - player.pos.z;
+    const d2 = dx * dx + dz * dz;
+    if (d2 < bestDist) { bestDist = d2; near = ch; }
+  }
+  nearbyChest = near;
+  // Toggle mobile "open" button visibility
+  if (_openBtnEl) {
+    _openBtnEl.style.display = near ? 'flex' : 'none';
+  }
+}
+
+let nearbyChest = null;
+let _openBtnEl = null;
+
+function tryOpenChest() {
+  if (!nearbyChest || nearbyChest.opened) return;
+  nearbyChest.opened = true;
+  // Open the lid visually: rotate it back
+  nearbyChest.lid.rotation.x = -1.0;
+  nearbyChest.lid.position.y += 0.05;
+  nearbyChest.lid.position.z -= 0.15;
+  player.health = Math.min(100, player.health + 10);
+  healthFill.style.width = player.health + '%';
+  showHint('+10 здоровья', 1.5);
+  if (_openBtnEl) _openBtnEl.style.display = 'none';
+  nearbyChest = null;
 }
 
 // -------- Snow particles --------
@@ -638,6 +911,9 @@ function onKeyDown(e) {
   if (e.code === 'KeyF') {
     tryShout();
   }
+  if (e.code === 'KeyE') {
+    tryOpenChest();
+  }
 }
 function onKeyUp(e) { keys[e.code] = false; }
 
@@ -725,6 +1001,8 @@ function setupMobileControls() {
   const btnSword = document.getElementById('btnSword');
   const btnShout = document.getElementById('btnShout');
   const btnJump  = document.getElementById('btnJump');
+  const btnOpen  = document.getElementById('btnOpen');
+  _openBtnEl = btnOpen;
 
   // Prevent default touch behaviors that would scroll / zoom the page.
   const swallow = (e) => { e.preventDefault(); };
@@ -836,6 +1114,7 @@ function setupMobileControls() {
   wireButton(btnSword, trySwordSwing);
   wireButton(btnShout, () => { if (shoutCooldown <= 0) tryShout(); });
   wireButton(btnJump,  tryJump);
+  wireButton(btnOpen,  tryOpenChest);
 
   // Periodically reflect shout cooldown on the button.
   setInterval(() => {
@@ -855,6 +1134,7 @@ function animate() {
     updateShockwaves(dt);
     updateShoutCooldown(dt);
     updateSnow(dt);
+    updateInteriors(dt);
   }
   renderer.render(scene, camera);
 }
@@ -878,6 +1158,9 @@ function updatePlayer(dt) {
 
   player.pos.x += move.x;
   player.pos.z += move.z;
+
+  // Wall collision (XZ-only) — push player out of hut walls/furniture
+  collideWalls();
 
   // Gravity
   player.vel.y -= 18 * dt;
