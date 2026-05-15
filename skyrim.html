@@ -1,0 +1,887 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>SKYRIM (но через нейронку)</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0e14; font-family: 'Georgia', serif; color: #d8dee9; }
+  canvas { display: block; }
+
+  /* Title screen */
+  #title {
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, #1c2330 0%, #0a0e14 100%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 100; text-align: center; padding: 20px;
+  }
+  #title h1 {
+    font-size: 64px; letter-spacing: 6px; color: #c8d4e3;
+    text-shadow: 0 0 20px rgba(80,140,200,0.6), 0 4px 8px #000;
+    margin-bottom: 10px;
+  }
+  #title h2 { font-size: 18px; color: #8a99ad; margin-bottom: 40px; font-style: italic; }
+  #title .instr { font-size: 16px; line-height: 1.8; margin-bottom: 30px; color: #b8c5d6; }
+  #title .instr span { color: #ffd27a; font-weight: bold; }
+  #title button {
+    padding: 14px 50px; font-size: 22px; letter-spacing: 4px;
+    background: #2a3a52; color: #e8eef8; border: 2px solid #6b88b0;
+    cursor: pointer; font-family: inherit; transition: all 0.2s;
+  }
+  #title button:hover { background: #4a6a92; box-shadow: 0 0 25px rgba(100,160,220,0.5); }
+  #title .platform { margin-top: 18px; font-size: 12px; color: #5a6a7c; }
+
+  /* HUD */
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 50; display: none; }
+  #healthBar {
+    position: absolute; top: 18px; left: 18px;
+    width: 220px; height: 22px;
+    border: 2px solid #6b88b0; background: rgba(0,0,0,0.4);
+  }
+  #healthFill { height: 100%; width: 100%; background: linear-gradient(90deg, #b03030, #d65050); transition: width 0.3s; }
+  #healthLabel { position: absolute; top: 22px; left: 26px; font-size: 13px; color: #fff; text-shadow: 1px 1px 2px #000; }
+
+  #shoutBar {
+    position: absolute; bottom: 26px; left: 50%; transform: translateX(-50%);
+    width: 280px; height: 14px;
+    border: 2px solid #6b88b0; background: rgba(0,0,0,0.4);
+  }
+  #shoutFill { height: 100%; width: 100%; background: linear-gradient(90deg, #3a7dc8, #6fbef5); transition: width 0.1s linear; }
+  #shoutLabel { position: absolute; bottom: 42px; left: 50%; transform: translateX(-50%); font-size: 12px; color: #b8c5d6; text-shadow: 1px 1px 2px #000; letter-spacing: 2px; }
+
+  #score {
+    position: absolute; top: 18px; right: 18px;
+    font-size: 16px; color: #e8eef8; text-shadow: 1px 1px 3px #000;
+    background: rgba(0,0,0,0.35); padding: 8px 14px; border: 1px solid #4a5a72;
+  }
+
+  #crosshair {
+    position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+    width: 18px; height: 18px;
+  }
+  #crosshair::before, #crosshair::after {
+    content: ''; position: absolute; background: rgba(255,255,255,0.7);
+  }
+  #crosshair::before { left: 50%; top: 0; width: 2px; height: 100%; transform: translateX(-50%); }
+  #crosshair::after { top: 50%; left: 0; height: 2px; width: 100%; transform: translateY(-50%); }
+
+  /* Win screen */
+  #win {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at center, #2a3550 0%, #0a0e14 80%);
+    display: none; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 200; text-align: center;
+  }
+  #win h1 { font-size: 56px; color: #ffd27a; letter-spacing: 4px; text-shadow: 0 0 30px rgba(255,210,120,0.6); margin-bottom: 20px; }
+  #win p { font-size: 20px; color: #d8dee9; margin-bottom: 40px; }
+  #win button {
+    padding: 14px 40px; font-size: 18px; letter-spacing: 3px;
+    background: #2a3a52; color: #e8eef8; border: 2px solid #6b88b0;
+    cursor: pointer; font-family: inherit;
+  }
+  #win button:hover { background: #4a6a92; }
+
+  /* Hint */
+  #hint {
+    position: absolute; top: 60px; left: 50%; transform: translateX(-50%);
+    color: #ffd27a; font-size: 14px; text-shadow: 1px 1px 3px #000;
+    pointer-events: none; display: none; z-index: 60;
+  }
+</style>
+</head>
+<body>
+
+<div id="title">
+  <h1>SKYRIM</h1>
+  <h2>(но через нейронку)</h2>
+  <div class="instr">
+    <span>WASD</span> — движение<br>
+    <span>Мышь</span> — обзор<br>
+    <span>ЛКМ</span> — меч<br>
+    <span>F</span> — Фус Ро Да<br>
+    <span>Пробел</span> — прыжок
+  </div>
+  <button id="startBtn">НАЧАТЬ</button>
+  <div class="platform">только PC · кликни, чтобы захватить курсор</div>
+</div>
+
+<div id="hud">
+  <div id="healthBar"><div id="healthFill"></div></div>
+  <div id="healthLabel">Здоровье</div>
+  <div id="shoutLabel">ГОЛОС</div>
+  <div id="shoutBar"><div id="shoutFill"></div></div>
+  <div id="score">Драконов убито: 0 / 1</div>
+  <div id="crosshair"></div>
+</div>
+
+<div id="hint"></div>
+
+<div id="win">
+  <h1>DOVAHKIIN!</h1>
+  <p>You have slain Alduin.</p>
+  <button id="restartBtn">Сыграть снова</button>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+// -------- Globals --------
+let scene, camera, renderer, clock;
+let player = { pos: new THREE.Vector3(0, 1.7, 20), vel: new THREE.Vector3(), onGround: true, health: 100 };
+let keys = {};
+let pitch = 0, yaw = 0;
+let pointerLocked = false;
+let gameStarted = false;
+let gameWon = false;
+
+// Sword
+let sword, swordSwinging = false, swordSwingT = 0;
+
+// Dragon
+let dragon, dragonAlive = true, dragonGrounded = false, dragonAngle = 0;
+let dragonHealth = 100;
+let dragonGroundTimer = 0;
+
+// Shockwave
+let shockwaves = []; // {mesh, life, dir, origin}
+let shoutCooldown = 0; // seconds remaining
+const SHOUT_MAX = 6;
+
+// Audio
+let audioCtx = null;
+let droneNodes = null;
+
+// Terrain
+const TERRAIN_SIZE = 400;
+const TERRAIN_SEGS = 80;
+let terrainGeometry, terrainMesh;
+
+// HUD elements
+const healthFill = document.getElementById('healthFill');
+const shoutFill = document.getElementById('shoutFill');
+const scoreEl = document.getElementById('score');
+const hintEl = document.getElementById('hint');
+
+// -------- Init --------
+function init() {
+  scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x8da3b8); // grey-blue sky
+  scene.fog = new THREE.Fog(0x9eb3c8, 40, 220);
+
+  camera = new THREE.PerspectiveCamera(72, window.innerWidth / window.innerHeight, 0.1, 600);
+  camera.position.copy(player.pos);
+
+  renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  clock = new THREE.Clock();
+
+  // Lights
+  const ambient = new THREE.AmbientLight(0xb0c0d8, 0.55);
+  scene.add(ambient);
+  const sun = new THREE.DirectionalLight(0xfff3d8, 0.9);
+  sun.position.set(80, 120, 40);
+  scene.add(sun);
+  const hemi = new THREE.HemisphereLight(0xccddee, 0x4a5060, 0.4);
+  scene.add(hemi);
+
+  buildTerrain();
+  buildMountains();
+  buildTrees();
+  buildVillage();
+  buildSword();
+  buildDragon();
+
+  // Snow particles (subtle)
+  buildSnow();
+
+  window.addEventListener('resize', onResize);
+  document.addEventListener('keydown', onKeyDown);
+  document.addEventListener('keyup', onKeyUp);
+  document.addEventListener('mousemove', onMouseMove);
+  document.addEventListener('mousedown', onMouseDown);
+  document.addEventListener('pointerlockchange', () => {
+    pointerLocked = document.pointerLockElement === renderer.domElement;
+  });
+
+  animate();
+}
+
+// -------- Terrain with simple noise --------
+function noise2D(x, y) {
+  // cheap pseudo-noise — sum of sines
+  return (
+    Math.sin(x * 0.07) * Math.cos(y * 0.05) * 2.2 +
+    Math.sin(x * 0.13 + 1.3) * Math.cos(y * 0.11 + 0.7) * 1.2 +
+    Math.sin((x + y) * 0.04) * 1.5
+  );
+}
+
+function getHeightAt(x, z) {
+  // Flatten near spawn so we don't clip into ground
+  const distSpawn = Math.sqrt(x * x + (z - 20) * (z - 20));
+  const flatten = Math.min(1, distSpawn / 25);
+  return noise2D(x, z) * flatten;
+}
+
+function buildTerrain() {
+  terrainGeometry = new THREE.PlaneGeometry(TERRAIN_SIZE, TERRAIN_SIZE, TERRAIN_SEGS, TERRAIN_SEGS);
+  terrainGeometry.rotateX(-Math.PI / 2);
+  const pos = terrainGeometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const z = pos.getZ(i);
+    pos.setY(i, getHeightAt(x, z));
+  }
+  terrainGeometry.computeVertexNormals();
+
+  const mat = new THREE.MeshLambertMaterial({ color: 0xe8eef5, flatShading: true });
+  terrainMesh = new THREE.Mesh(terrainGeometry, mat);
+  scene.add(terrainMesh);
+}
+
+// -------- Mountains (big grey cones in distance) --------
+function buildMountains() {
+  const mat = new THREE.MeshLambertMaterial({ color: 0x6f7e90, flatShading: true });
+  const snowMat = new THREE.MeshLambertMaterial({ color: 0xe2eaf2, flatShading: true });
+  const count = 10;
+  for (let i = 0; i < count; i++) {
+    const angle = (i / count) * Math.PI * 2 + Math.random() * 0.2;
+    const r = 160 + Math.random() * 40;
+    const x = Math.cos(angle) * r;
+    const z = Math.sin(angle) * r;
+    const h = 60 + Math.random() * 50;
+    const rad = 30 + Math.random() * 20;
+    const m = new THREE.Mesh(new THREE.ConeGeometry(rad, h, 6), mat);
+    m.position.set(x, h / 2 - 5, z);
+    scene.add(m);
+    // snowy tip
+    const tip = new THREE.Mesh(new THREE.ConeGeometry(rad * 0.45, h * 0.3, 6), snowMat);
+    tip.position.set(x, h * 0.85 - 5, z);
+    scene.add(tip);
+  }
+}
+
+// -------- Pine trees --------
+function buildTrees() {
+  const trunkMat = new THREE.MeshLambertMaterial({ color: 0x4a2e1c });
+  const foliageMat = new THREE.MeshLambertMaterial({ color: 0x2e4a2e, flatShading: true });
+  const snowFoliageMat = new THREE.MeshLambertMaterial({ color: 0x506f56, flatShading: true });
+
+  for (let i = 0; i < 80; i++) {
+    const x = (Math.random() - 0.5) * 320;
+    const z = (Math.random() - 0.5) * 320;
+    // avoid village area and spawn
+    if (Math.abs(x) < 25 && Math.abs(z + 5) < 25) continue;
+    if (Math.abs(x) < 5 && Math.abs(z - 20) < 8) continue;
+
+    const ground = getHeightAt(x, z);
+    const trunkH = 1.2 + Math.random() * 0.6;
+    const trunk = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.2, trunkH, 6), trunkMat);
+    trunk.position.set(x, ground + trunkH / 2, z);
+    scene.add(trunk);
+
+    // 2-3 stacked cones
+    const layers = 3;
+    for (let j = 0; j < layers; j++) {
+      const r = 1.4 - j * 0.35;
+      const h = 1.6;
+      const cone = new THREE.Mesh(
+        new THREE.ConeGeometry(r, h, 7),
+        j === 0 ? foliageMat : snowFoliageMat
+      );
+      cone.position.set(x, ground + trunkH + j * 1.0 + 0.5, z);
+      scene.add(cone);
+    }
+  }
+}
+
+// -------- Village (wooden huts) --------
+function buildVillage() {
+  const wallMat = new THREE.MeshLambertMaterial({ color: 0x6b4a2c });
+  const roofMat = new THREE.MeshLambertMaterial({ color: 0x3a2418 });
+  const snowRoofMat = new THREE.MeshLambertMaterial({ color: 0xe0e8f0 });
+
+  const huts = [
+    { x: -10, z: -5, rot: 0.2 },
+    { x: 4, z: -10, rot: -0.4 },
+    { x: -3, z: -18, rot: 0.6 },
+    { x: 12, z: -3, rot: -0.1 },
+  ];
+
+  huts.forEach(h => {
+    const group = new THREE.Group();
+    const ground = getHeightAt(h.x, h.z);
+
+    const body = new THREE.Mesh(new THREE.BoxGeometry(4, 2.4, 3), wallMat);
+    body.position.y = 1.2;
+    group.add(body);
+
+    // triangular roof = cone with 4 sides
+    const roof = new THREE.Mesh(new THREE.ConeGeometry(2.8, 1.6, 4), roofMat);
+    roof.position.y = 2.4 + 0.8;
+    roof.rotation.y = Math.PI / 4;
+    group.add(roof);
+
+    // snow cap
+    const snowCap = new THREE.Mesh(new THREE.ConeGeometry(1.6, 0.6, 4), snowRoofMat);
+    snowCap.position.y = 2.4 + 1.45;
+    snowCap.rotation.y = Math.PI / 4;
+    group.add(snowCap);
+
+    group.position.set(h.x, ground, h.z);
+    group.rotation.y = h.rot;
+    scene.add(group);
+  });
+
+  // central campfire stone ring
+  const stoneMat = new THREE.MeshLambertMaterial({ color: 0x555a62 });
+  const fireMat = new THREE.MeshBasicMaterial({ color: 0xff8030 });
+  const fireRing = new THREE.Group();
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    const stone = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.3, 0.4), stoneMat);
+    stone.position.set(Math.cos(a) * 0.9, 0.15, Math.sin(a) * 0.9);
+    fireRing.add(stone);
+  }
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.4, 0.8, 6), fireMat);
+  flame.position.y = 0.5;
+  fireRing.add(flame);
+  fireRing.position.set(0, getHeightAt(0, -8), -8);
+  scene.add(fireRing);
+}
+
+// -------- Snow particles --------
+let snowParticles;
+function buildSnow() {
+  const count = 600;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  for (let i = 0; i < count; i++) {
+    positions[i * 3] = (Math.random() - 0.5) * 80;
+    positions[i * 3 + 1] = Math.random() * 40;
+    positions[i * 3 + 2] = (Math.random() - 0.5) * 80;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  const mat = new THREE.PointsMaterial({ color: 0xffffff, size: 0.12, transparent: true, opacity: 0.7 });
+  snowParticles = new THREE.Points(geo, mat);
+  scene.add(snowParticles);
+}
+
+// -------- Sword (attached to camera) --------
+function buildSword() {
+  // group attached to camera
+  sword = new THREE.Group();
+  const blade = new THREE.Mesh(
+    new THREE.BoxGeometry(0.08, 0.08, 0.9),
+    new THREE.MeshLambertMaterial({ color: 0xc8ccd2 })
+  );
+  blade.position.set(0, 0, -0.45);
+  const hilt = new THREE.Mesh(
+    new THREE.BoxGeometry(0.14, 0.14, 0.2),
+    new THREE.MeshLambertMaterial({ color: 0x4a2e1c })
+  );
+  hilt.position.set(0, 0, 0.1);
+  const guard = new THREE.Mesh(
+    new THREE.BoxGeometry(0.3, 0.08, 0.06),
+    new THREE.MeshLambertMaterial({ color: 0x8a7038 })
+  );
+  guard.position.set(0, 0, -0.02);
+
+  sword.add(blade);
+  sword.add(hilt);
+  sword.add(guard);
+
+  // resting pose: lower-right of view
+  sword.position.set(0.35, -0.32, -0.6);
+  sword.rotation.set(0, -0.3, 0.2);
+
+  camera.add(sword);
+  scene.add(camera);
+}
+
+// -------- Dragon --------
+function buildDragon() {
+  dragon = new THREE.Group();
+  const bodyMat = new THREE.MeshLambertMaterial({ color: 0x1a1a22, flatShading: true });
+  const accentMat = new THREE.MeshLambertMaterial({ color: 0x40252a, flatShading: true });
+
+  // body
+  const body = new THREE.Mesh(new THREE.BoxGeometry(2, 1.2, 5), bodyMat);
+  dragon.add(body);
+
+  // head
+  const head = new THREE.Mesh(new THREE.ConeGeometry(0.9, 2.2, 5), bodyMat);
+  head.rotation.x = -Math.PI / 2;
+  head.position.set(0, 0.2, -3.2);
+  dragon.add(head);
+
+  // jaw glow (subtle red)
+  const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.2, 0.8), accentMat);
+  jaw.position.set(0, -0.1, -3.5);
+  dragon.add(jaw);
+
+  // tail
+  const tail = new THREE.Mesh(new THREE.ConeGeometry(0.6, 3.5, 5), bodyMat);
+  tail.rotation.x = Math.PI / 2;
+  tail.position.set(0, 0.1, 3.5);
+  dragon.add(tail);
+
+  // wings — large flat boxes
+  const wingGeo = new THREE.BoxGeometry(6, 0.08, 2.2);
+  const wingL = new THREE.Mesh(wingGeo, bodyMat);
+  wingL.position.set(-3.5, 0.4, 0);
+  wingL.name = 'wingL';
+  dragon.add(wingL);
+  const wingR = new THREE.Mesh(wingGeo, bodyMat);
+  wingR.position.set(3.5, 0.4, 0);
+  wingR.name = 'wingR';
+  dragon.add(wingR);
+
+  dragon.position.set(0, 35, 0);
+  scene.add(dragon);
+}
+
+// -------- Audio --------
+function initAudio() {
+  if (audioCtx) return;
+  try {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    // low rumbling drone
+    const osc1 = audioCtx.createOscillator();
+    osc1.type = 'sawtooth';
+    osc1.frequency.value = 55;
+    const osc2 = audioCtx.createOscillator();
+    osc2.type = 'sine';
+    osc2.frequency.value = 41;
+    const gain = audioCtx.createGain();
+    gain.gain.value = 0.04;
+    const filter = audioCtx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 200;
+    osc1.connect(filter); osc2.connect(filter);
+    filter.connect(gain); gain.connect(audioCtx.destination);
+    osc1.start(); osc2.start();
+    droneNodes = { osc1, osc2, gain };
+  } catch (e) {
+    console.warn('Audio init failed:', e);
+  }
+}
+
+function playShoutSound() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  // 3 syllables: FUS - RO - DAH
+  const syllables = [
+    { f: 110, t: 0.0, d: 0.18 },
+    { f: 90,  t: 0.22, d: 0.18 },
+    { f: 70,  t: 0.45, d: 0.55 },
+  ];
+  syllables.forEach(s => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(s.f * 2, now + s.t);
+    osc.frequency.exponentialRampToValueAtTime(s.f, now + s.t + s.d);
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0.0, now + s.t);
+    g.gain.linearRampToValueAtTime(0.35, now + s.t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, now + s.t + s.d);
+    const filt = audioCtx.createBiquadFilter();
+    filt.type = 'lowpass';
+    filt.frequency.value = 800;
+    osc.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+    osc.start(now + s.t);
+    osc.stop(now + s.t + s.d + 0.05);
+  });
+}
+
+function playSwordSwoosh() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const noise = audioCtx.createBufferSource();
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 0.2, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+  noise.buffer = buf;
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'bandpass';
+  filt.frequency.setValueAtTime(1200, now);
+  filt.frequency.exponentialRampToValueAtTime(400, now + 0.15);
+  const g = audioCtx.createGain();
+  g.gain.value = 0.15;
+  noise.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+  noise.start();
+}
+
+function playDragonRoar() {
+  if (!audioCtx) return;
+  const now = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(80, now);
+  osc.frequency.exponentialRampToValueAtTime(40, now + 1.2);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(0.3, now + 0.1);
+  g.gain.exponentialRampToValueAtTime(0.001, now + 1.4);
+  const filt = audioCtx.createBiquadFilter();
+  filt.type = 'lowpass';
+  filt.frequency.value = 400;
+  osc.connect(filt); filt.connect(g); g.connect(audioCtx.destination);
+  osc.start(now);
+  osc.stop(now + 1.5);
+}
+
+// -------- Input --------
+function onKeyDown(e) {
+  keys[e.code] = true;
+  if (!gameStarted) return;
+  if (e.code === 'Space' && player.onGround) {
+    player.vel.y = 7;
+    player.onGround = false;
+  }
+  if (e.code === 'KeyF') {
+    tryShout();
+  }
+}
+function onKeyUp(e) { keys[e.code] = false; }
+
+function onMouseMove(e) {
+  if (!pointerLocked) return;
+  const sens = 0.0025;
+  yaw -= e.movementX * sens;
+  pitch -= e.movementY * sens;
+  pitch = Math.max(-Math.PI / 2 + 0.05, Math.min(Math.PI / 2 - 0.05, pitch));
+}
+
+function onMouseDown(e) {
+  if (!pointerLocked || !gameStarted) return;
+  if (e.button === 0) {
+    if (!swordSwinging) {
+      swordSwinging = true;
+      swordSwingT = 0;
+      playSwordSwoosh();
+    }
+  }
+}
+
+// -------- Actions --------
+function tryShout() {
+  if (shoutCooldown > 0) return;
+  shoutCooldown = SHOUT_MAX;
+
+  // direction = camera forward (horizontal)
+  const dir = new THREE.Vector3();
+  camera.getWorldDirection(dir);
+
+  // build a blue shockwave ring
+  const ring = new THREE.Mesh(
+    new THREE.RingGeometry(0.5, 1.0, 32),
+    new THREE.MeshBasicMaterial({ color: 0x6fbef5, side: THREE.DoubleSide, transparent: true, opacity: 0.9 })
+  );
+  ring.position.copy(camera.position);
+  // orient ring to face direction
+  ring.lookAt(camera.position.clone().add(dir));
+  scene.add(ring);
+
+  shockwaves.push({
+    mesh: ring,
+    life: 1.5,
+    maxLife: 1.5,
+    dir: dir.clone().setY(0).normalize(),
+    origin: camera.position.clone(),
+    speed: 35,
+  });
+
+  playShoutSound();
+  showHint('ФУС РО ДА!', 1.2);
+}
+
+function showHint(text, seconds) {
+  hintEl.textContent = text;
+  hintEl.style.display = 'block';
+  clearTimeout(showHint._t);
+  showHint._t = setTimeout(() => { hintEl.style.display = 'none'; }, seconds * 1000);
+}
+
+// -------- Animation loop --------
+function animate() {
+  requestAnimationFrame(animate);
+  const dt = Math.min(0.05, clock.getDelta());
+  if (gameStarted && !gameWon) {
+    updatePlayer(dt);
+    updateSword(dt);
+    updateDragon(dt);
+    updateShockwaves(dt);
+    updateShoutCooldown(dt);
+    updateSnow(dt);
+  }
+  renderer.render(scene, camera);
+}
+
+function updatePlayer(dt) {
+  // Movement
+  const speed = 8;
+  const forward = new THREE.Vector3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const right = new THREE.Vector3(Math.cos(yaw), 0, -Math.sin(yaw));
+  const move = new THREE.Vector3();
+  if (keys['KeyW']) move.add(forward);
+  if (keys['KeyS']) move.sub(forward);
+  if (keys['KeyD']) move.add(right);
+  if (keys['KeyA']) move.sub(right);
+  if (move.lengthSq() > 0) move.normalize().multiplyScalar(speed * dt);
+
+  player.pos.x += move.x;
+  player.pos.z += move.z;
+
+  // Gravity
+  player.vel.y -= 18 * dt;
+  player.pos.y += player.vel.y * dt;
+
+  // Clamp to terrain
+  const groundY = getHeightAt(player.pos.x, player.pos.z) + 1.7;
+  if (player.pos.y <= groundY) {
+    player.pos.y = groundY;
+    player.vel.y = 0;
+    player.onGround = true;
+  }
+
+  // Bounds
+  const bound = TERRAIN_SIZE / 2 - 5;
+  player.pos.x = Math.max(-bound, Math.min(bound, player.pos.x));
+  player.pos.z = Math.max(-bound, Math.min(bound, player.pos.z));
+
+  // Update camera
+  camera.position.copy(player.pos);
+  camera.rotation.order = 'YXZ';
+  camera.rotation.y = yaw;
+  camera.rotation.x = pitch;
+}
+
+function updateSword(dt) {
+  if (!swordSwinging) {
+    // idle bob
+    const t = performance.now() * 0.003;
+    sword.position.y = -0.32 + Math.sin(t) * 0.01;
+    sword.rotation.z = 0.2 + Math.sin(t * 0.7) * 0.02;
+    return;
+  }
+  swordSwingT += dt * 4.5;
+  // swing: rotate from right-back to left-down
+  const p = Math.min(1, swordSwingT);
+  // ease
+  const a = Math.sin(p * Math.PI);
+  sword.rotation.z = 0.2 - a * 1.8;
+  sword.rotation.x = -a * 1.2;
+  sword.position.x = 0.35 - a * 0.4;
+  sword.position.y = -0.32 + a * 0.15;
+
+  // hit check at mid swing
+  if (p > 0.35 && p < 0.65 && !sword.userData.hitChecked) {
+    sword.userData.hitChecked = true;
+    tryHitDragon();
+  }
+
+  if (p >= 1) {
+    swordSwinging = false;
+    sword.userData.hitChecked = false;
+    sword.position.set(0.35, -0.32, -0.6);
+    sword.rotation.set(0, -0.3, 0.2);
+  }
+}
+
+function tryHitDragon() {
+  if (!dragonAlive) return;
+  // Must be grounded (low) and within sword reach
+  const dist = camera.position.distanceTo(dragon.position);
+  // Check sword can reach
+  if (dist > 6) {
+    showHint('Слишком далеко!', 0.8);
+    return;
+  }
+  // Check facing
+  const toDragon = new THREE.Vector3().subVectors(dragon.position, camera.position).normalize();
+  const fwd = new THREE.Vector3();
+  camera.getWorldDirection(fwd);
+  if (toDragon.dot(fwd) < 0.3) return;
+
+  if (!dragonGrounded) {
+    showHint('Сначала сбей его! (F — Фус Ро Да)', 1.5);
+    return;
+  }
+
+  dragonHealth -= 35;
+  playDragonRoar();
+  showHint('Удар!', 0.6);
+  if (dragonHealth <= 0) killDragon();
+}
+
+function updateDragon(dt) {
+  if (!dragonAlive) {
+    // dramatic fall already done; sink slightly
+    dragon.position.y = Math.max(0.5, dragon.position.y - dt * 2);
+    return;
+  }
+
+  if (dragonGrounded) {
+    dragonGroundTimer -= dt;
+    // animate wings flailing slightly
+    const w = Math.sin(performance.now() * 0.012) * 0.3;
+    dragon.getObjectByName('wingL').rotation.z = -0.3 + w;
+    dragon.getObjectByName('wingR').rotation.z = 0.3 - w;
+    if (dragonGroundTimer <= 0) {
+      // recover, fly back up
+      dragonGrounded = false;
+      showHint('Дракон взлетает обратно!', 1.5);
+    }
+    return;
+  }
+
+  // Flying — circle around the village
+  dragonAngle += dt * 0.35;
+  const r = 50;
+  const cx = 0, cz = -8;
+  const targetX = cx + Math.cos(dragonAngle) * r;
+  const targetZ = cz + Math.sin(dragonAngle) * r;
+  const targetY = 32 + Math.sin(dragonAngle * 0.7) * 4;
+
+  dragon.position.x += (targetX - dragon.position.x) * 0.05;
+  dragon.position.z += (targetZ - dragon.position.z) * 0.05;
+  dragon.position.y += (targetY - dragon.position.y) * 0.05;
+
+  // face direction of travel (tangent)
+  const tx = -Math.sin(dragonAngle), tz = Math.cos(dragonAngle);
+  dragon.rotation.y = Math.atan2(tx, tz) + Math.PI;
+
+  // wing flap
+  const flap = Math.sin(performance.now() * 0.006) * 0.5;
+  dragon.getObjectByName('wingL').rotation.z = -flap;
+  dragon.getObjectByName('wingR').rotation.z = flap;
+
+  // occasional swoop near player (cosmetic damage)
+  const distToPlayer = dragon.position.distanceTo(player.pos);
+  if (distToPlayer < 12 && Math.random() < 0.02) {
+    player.health = Math.max(0, player.health - 3);
+    healthFill.style.width = player.health + '%';
+  }
+}
+
+function knockDragonDown() {
+  dragonGrounded = true;
+  dragonGroundTimer = 7; // 7 seconds to attack
+  playDragonRoar();
+  showHint('Дракон сбит! РУБИ ЕГО!', 2.5);
+  // animate fall
+  const fallTarget = new THREE.Vector3(dragon.position.x, getHeightAt(dragon.position.x, dragon.position.z) + 1, dragon.position.z);
+  // simple lerp via flag — we'll just snap-ish in updateDragon via grounded animation; here, force position low quickly:
+  const startY = dragon.position.y;
+  const startT = performance.now();
+  const fallDur = 800;
+  function fall() {
+    const t = (performance.now() - startT) / fallDur;
+    if (t >= 1 || !dragonGrounded) {
+      dragon.position.y = fallTarget.y;
+      return;
+    }
+    dragon.position.y = startY + (fallTarget.y - startY) * t;
+    dragon.position.x += (fallTarget.x - dragon.position.x) * 0.1;
+    dragon.position.z += (fallTarget.z - dragon.position.z) * 0.1;
+    requestAnimationFrame(fall);
+  }
+  fall();
+}
+
+function killDragon() {
+  dragonAlive = false;
+  gameWon = true;
+  scoreEl.textContent = 'Драконов убито: 1 / 1';
+  setTimeout(() => {
+    document.getElementById('win').style.display = 'flex';
+    document.exitPointerLock();
+  }, 800);
+}
+
+function updateShockwaves(dt) {
+  for (let i = shockwaves.length - 1; i >= 0; i--) {
+    const sw = shockwaves[i];
+    sw.life -= dt;
+    // expand outward
+    const elapsed = sw.maxLife - sw.life;
+    const dist = elapsed * sw.speed;
+    sw.mesh.position.copy(sw.origin).add(sw.dir.clone().multiplyScalar(dist));
+    // scale up
+    const s = 1 + elapsed * 8;
+    sw.mesh.scale.set(s, s, s);
+    sw.mesh.material.opacity = Math.max(0, sw.life / sw.maxLife * 0.9);
+
+    // check dragon hit
+    if (dragonAlive && !dragonGrounded) {
+      const d = sw.mesh.position.distanceTo(dragon.position);
+      // Wave radius approx
+      const radius = s * 1.0;
+      if (d < radius + 3) {
+        knockDragonDown();
+      }
+    }
+
+    if (sw.life <= 0) {
+      scene.remove(sw.mesh);
+      sw.mesh.geometry.dispose();
+      sw.mesh.material.dispose();
+      shockwaves.splice(i, 1);
+    }
+  }
+}
+
+function updateShoutCooldown(dt) {
+  if (shoutCooldown > 0) {
+    shoutCooldown = Math.max(0, shoutCooldown - dt);
+  }
+  const pct = (1 - shoutCooldown / SHOUT_MAX) * 100;
+  shoutFill.style.width = pct + '%';
+}
+
+function updateSnow(dt) {
+  if (!snowParticles) return;
+  const pos = snowParticles.geometry.attributes.position;
+  for (let i = 0; i < pos.count; i++) {
+    let y = pos.getY(i);
+    y -= dt * 2.5;
+    if (y < 0) y = 40;
+    pos.setY(i, y);
+  }
+  pos.needsUpdate = true;
+  // follow player so snow is always around
+  snowParticles.position.x = player.pos.x;
+  snowParticles.position.z = player.pos.z;
+}
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+
+// -------- Start / restart --------
+document.getElementById('startBtn').addEventListener('click', () => {
+  document.getElementById('title').style.display = 'none';
+  document.getElementById('hud').style.display = 'block';
+  gameStarted = true;
+  initAudio();
+  renderer.domElement.requestPointerLock();
+  showHint('Найди дракона в небе. F — Фус Ро Да, чтобы сбить.', 4);
+});
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  // simplest: reload
+  window.location.reload();
+});
+
+// -------- Boot --------
+init();
+</script>
+</body>
+</html>
