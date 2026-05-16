@@ -1,0 +1,1728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>ШРЕК — Настоящий Огр</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { width: 100%; height: 100%; overflow: hidden; background: #0a1a0a; font-family: 'Trebuchet MS', 'Comic Sans MS', sans-serif; color: #fff; user-select: none; }
+  canvas { display: block; }
+  #app { position: relative; width: 100%; height: 100%; }
+
+  /* === TITLE SCREEN === */
+  #title {
+    position: absolute; inset: 0; z-index: 50;
+    background: radial-gradient(ellipse at center, #2d4a1f 0%, #0a1a0a 80%);
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 20px;
+  }
+  #title h1 {
+    font-size: clamp(70px, 18vw, 180px);
+    color: #8FBC4F;
+    text-shadow:
+      0 0 6px #4a7a20,
+      0 6px 0 #3a5a18,
+      0 8px 0 #2a4a08,
+      0 10px 24px rgba(0,0,0,0.7);
+    letter-spacing: 0.05em;
+    font-weight: 900;
+    transform: skewX(-3deg);
+    margin-bottom: 10px;
+  }
+  #title .sub {
+    font-size: clamp(14px, 3vw, 22px);
+    color: #c4d8a0;
+    font-style: italic;
+    margin-bottom: 30px;
+    text-shadow: 0 2px 4px #000;
+  }
+  #title #bustCanvas {
+    width: min(340px, 70vw); height: min(340px, 70vw);
+    margin-bottom: 25px;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(143,188,79,0.25) 0%, transparent 70%);
+    box-shadow: 0 0 60px rgba(143,188,79,0.4);
+  }
+  #title button, .gameBtn {
+    background: linear-gradient(180deg, #8FBC4F 0%, #5a8a20 100%);
+    color: #fff;
+    border: 4px solid #2a4a08;
+    padding: 18px 36px;
+    font-size: clamp(18px, 4vw, 28px);
+    font-weight: 900;
+    cursor: pointer;
+    border-radius: 14px;
+    text-shadow: 0 2px 0 #2a4a08;
+    box-shadow: 0 6px 0 #2a4a08, 0 8px 24px rgba(0,0,0,0.5);
+    transition: transform .08s;
+    letter-spacing: 0.04em;
+  }
+  #title button:active, .gameBtn:active { transform: translateY(4px); box-shadow: 0 2px 0 #2a4a08; }
+
+  /* === HUD === */
+  #hud { position: absolute; inset: 0; pointer-events: none; z-index: 20; display: none; }
+  #hud.active { display: block; }
+
+  #faceBox {
+    position: absolute; top: 12px; left: 12px;
+    background: rgba(0,0,0,0.55);
+    border: 3px solid #8FBC4F;
+    border-radius: 14px;
+    padding: 8px 14px 8px 60px;
+    font-weight: 900;
+    font-size: 22px;
+    color: #c4d8a0;
+    letter-spacing: 0.08em;
+    text-shadow: 0 2px 4px #000;
+  }
+  #faceBox::before {
+    content: '🧌';
+    position: absolute; left: 6px; top: 50%;
+    transform: translateY(-50%);
+    font-size: 38px;
+    filter: drop-shadow(0 2px 2px #000);
+  }
+  #onionBox {
+    position: absolute; top: 12px; right: 12px;
+    background: rgba(0,0,0,0.55);
+    border: 3px solid #d8a040;
+    border-radius: 14px;
+    padding: 10px 16px;
+    font-weight: 900;
+    font-size: 22px;
+    color: #ffe080;
+    text-shadow: 0 2px 4px #000;
+  }
+  #roarBox {
+    position: absolute; top: 70px; right: 12px;
+    background: rgba(0,0,0,0.55);
+    border: 3px solid #c44040;
+    border-radius: 14px;
+    padding: 6px 14px;
+    font-weight: 900;
+    font-size: 16px;
+    color: #ffb0b0;
+    text-shadow: 0 2px 4px #000;
+  }
+
+  #thought {
+    position: absolute; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.92);
+    color: #2a4a08;
+    border: 3px solid #2a4a08;
+    border-radius: 22px;
+    padding: 10px 22px;
+    font-weight: 700;
+    font-size: clamp(14px, 2.6vw, 19px);
+    max-width: 80vw; text-align: center;
+    box-shadow: 0 4px 14px rgba(0,0,0,0.6);
+    font-style: italic;
+  }
+  #thought::before {
+    content: '💭 ';
+  }
+
+  #prompt {
+    position: absolute; bottom: 90px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0,0,0,0.7);
+    color: #ffe080;
+    border: 2px solid #d8a040;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 16px;
+    display: none;
+  }
+  #prompt.show { display: block; }
+
+  /* === MOBILE CONTROLS === */
+  #mobileCtrls { position: absolute; inset: 0; pointer-events: none; z-index: 30; display: none; }
+  #mobileCtrls.active { display: block; }
+  #joy {
+    position: absolute; bottom: 30px; left: 30px;
+    width: 130px; height: 130px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.35);
+    border: 3px solid rgba(143,188,79,0.6);
+    pointer-events: auto;
+    touch-action: none;
+  }
+  #joyKnob {
+    position: absolute; top: 50%; left: 50%;
+    width: 60px; height: 60px;
+    margin: -30px 0 0 -30px;
+    border-radius: 50%;
+    background: rgba(143,188,79,0.7);
+    border: 2px solid #fff;
+  }
+  .mobBtn {
+    position: absolute;
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 3px solid #fff;
+    color: #fff;
+    font-weight: 900;
+    font-size: 16px;
+    pointer-events: auto;
+    display: flex; align-items: center; justify-content: center;
+    text-shadow: 0 2px 4px #000;
+    touch-action: none;
+  }
+  #btnRoar { bottom: 130px; right: 30px; background: rgba(196,64,64,0.7); }
+  #btnInteract { bottom: 50px; right: 30px; background: rgba(143,188,79,0.7); }
+  #btnJump { bottom: 50px; right: 120px; background: rgba(80,120,200,0.7); font-size: 14px; }
+  #btnRun { bottom: 130px; right: 120px; background: rgba(200,140,60,0.7); font-size: 14px; }
+
+  /* === WIN SCREEN === */
+  #winScreen {
+    position: absolute; inset: 0; z-index: 60;
+    background: radial-gradient(ellipse at center, #2d4a1f 0%, #0a1a0a 90%);
+    display: none; flex-direction: column;
+    align-items: center; justify-content: center;
+    text-align: center; padding: 20px;
+  }
+  #winScreen.show { display: flex; }
+  #winScreen h2 {
+    font-size: clamp(40px, 10vw, 90px);
+    color: #ffe080;
+    text-shadow: 0 0 12px #d8a040, 0 6px 0 #5a3a08, 0 10px 24px rgba(0,0,0,0.7);
+    margin-bottom: 16px;
+  }
+  #winScreen p {
+    font-size: clamp(16px, 3vw, 22px);
+    color: #c4d8a0;
+    margin-bottom: 30px;
+    max-width: 520px;
+  }
+
+  /* === FLASH === */
+  #flash {
+    position: absolute; inset: 0; z-index: 40;
+    background: #fff; opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s;
+  }
+</style>
+</head>
+<body>
+<div id="app">
+  <canvas id="game"></canvas>
+  <div id="flash"></div>
+
+  <div id="hud">
+    <div id="faceBox">ШРЕК</div>
+    <div id="onionBox">🧅 0/10</div>
+    <div id="roarBox">😱 0/4</div>
+    <div id="prompt">[E] Взаимодействовать</div>
+    <div id="thought">Это моё болото!</div>
+  </div>
+
+  <div id="mobileCtrls">
+    <div id="joy"><div id="joyKnob"></div></div>
+    <div class="mobBtn" id="btnInteract">E</div>
+    <div class="mobBtn" id="btnRoar">РЁВ</div>
+    <div class="mobBtn" id="btnJump">↑</div>
+    <div class="mobBtn" id="btnRun">БЕГ</div>
+  </div>
+
+  <div id="title">
+    <h1>ШРЕК</h1>
+    <div class="sub">(настоящий, не подделка)</div>
+    <canvas id="bustCanvas"></canvas>
+    <button id="startBtn">ПОГНАЛИ В БОЛОТО</button>
+  </div>
+
+  <div id="winScreen">
+    <h2>ОГР ВЕЛИКИЙ!</h2>
+    <p>Болото в полной безопасности.<br><span id="winStats"></span></p>
+    <button class="gameBtn" id="restartBtn">ЕЩЁ РАЗ</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.min.js"></script>
+<script>
+'use strict';
+
+// ============================================================
+// MOBILE DETECT
+// ============================================================
+const IS_MOBILE = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+// ============================================================
+// COLORS — Shrek-specific palette
+// ============================================================
+const COL = {
+  skinMain:   0x82b53c,  // main olive green
+  skinLight:  0x9bc850,  // lighter top of head
+  skinDark:   0x6a9628,  // jowls / underchin / shadow
+  skinNose:   0x7eaa38,  // nose
+  brow:       0x6a4a18,  // brow ridge slightly darker
+  eyebrow:    0xa05820,  // brown-orange eyebrows
+  eyeWhite:   0xfaf4d8,
+  iris:       0x5c3a18,  // brown iris
+  pupil:      0x100808,
+  mouth:      0x3a1a08,
+  toothWhite: 0xeae0c0,
+  vest:       0x5a3a1c,  // dark brown vest
+  vestDark:   0x3e2810,
+  tunic:      0xc8b070,  // cream/tan tunic
+  belt:       0x3a2410,
+  buckle:     0xc8a040,
+  pants:      0x6a4a22,  // brown pants
+  pantsDark:  0x4a3216,
+  nail:       0xc8b89c,
+};
+
+// ============================================================
+// SCENE SETUP (main game scene initialized later)
+// ============================================================
+
+// ============================================================
+// SHREK BUILDER — the heart of this whole thing
+// ============================================================
+// Returns a THREE.Group with named children for animation.
+function buildShrek(opts) {
+  opts = opts || {};
+  const detail = opts.detail || 'high';
+  const seg = detail === 'high' ? 24 : 16;
+
+  const shrek = new THREE.Group();
+  shrek.name = 'shrek';
+
+  // Materials — using MeshLambert for performance, no shadow maps
+  const matSkin     = new THREE.MeshLambertMaterial({ color: COL.skinMain });
+  const matSkinLite = new THREE.MeshLambertMaterial({ color: COL.skinLight });
+  const matSkinDark = new THREE.MeshLambertMaterial({ color: COL.skinDark });
+  const matNose     = new THREE.MeshLambertMaterial({ color: COL.skinNose });
+  const matBrow     = new THREE.MeshLambertMaterial({ color: COL.brow });
+  const matEyebrow  = new THREE.MeshLambertMaterial({ color: COL.eyebrow });
+  const matEyeW     = new THREE.MeshLambertMaterial({ color: COL.eyeWhite });
+  const matIris     = new THREE.MeshLambertMaterial({ color: COL.iris });
+  const matPupil    = new THREE.MeshBasicMaterial({ color: COL.pupil });
+  const matMouth    = new THREE.MeshBasicMaterial({ color: COL.mouth });
+  const matTooth    = new THREE.MeshLambertMaterial({ color: COL.toothWhite });
+  const matVest     = new THREE.MeshLambertMaterial({ color: COL.vest });
+  const matVestDark = new THREE.MeshLambertMaterial({ color: COL.vestDark });
+  const matTunic    = new THREE.MeshLambertMaterial({ color: COL.tunic });
+  const matBelt     = new THREE.MeshLambertMaterial({ color: COL.belt });
+  const matBuckle   = new THREE.MeshLambertMaterial({ color: COL.buckle });
+  const matPants    = new THREE.MeshLambertMaterial({ color: COL.pants });
+
+  // -------------------------------------
+  // BODY — stocky, barrel-chested, big belly
+  // -------------------------------------
+  const bodyGroup = new THREE.Group();
+  bodyGroup.name = 'body';
+  bodyGroup.position.y = 1.05;
+  shrek.add(bodyGroup);
+
+  // Chest / belly — wide, stocky barrel
+  const torsoGeo = new THREE.SphereGeometry(0.78, seg, seg);
+  // Squash into barrel
+  const torso = new THREE.Mesh(torsoGeo, matTunic);
+  torso.scale.set(1.15, 1.1, 1.0);
+  torso.position.y = 0;
+  bodyGroup.add(torso);
+
+  // Belly bulge in front
+  const bellyGeo = new THREE.SphereGeometry(0.55, seg, seg);
+  const belly = new THREE.Mesh(bellyGeo, matTunic);
+  belly.scale.set(1.0, 0.85, 0.7);
+  belly.position.set(0, -0.25, 0.32);
+  bodyGroup.add(belly);
+
+  // -------------------------------------
+  // VEST — brown linen, open V at front
+  // -------------------------------------
+  // Use a slightly larger torso shell, then put a V-shaped "opening" by adding tunic-colored wedge in front
+  const vestShellGeo = new THREE.SphereGeometry(0.82, seg, seg);
+  const vestShell = new THREE.Mesh(vestShellGeo, matVest);
+  vestShell.scale.set(1.18, 1.0, 1.02);
+  vestShell.position.y = 0.05;
+  bodyGroup.add(vestShell);
+
+  // V-cutout: a tunic-colored wedge in front
+  const vCutGeo = new THREE.BoxGeometry(0.55, 0.7, 0.4);
+  const vCut = new THREE.Mesh(vCutGeo, matTunic);
+  vCut.position.set(0, 0.05, 0.7);
+  vCut.rotation.z = Math.PI / 4; // diamond / V
+  bodyGroup.add(vCut);
+
+  // Vest edge trim — darker
+  const trimL = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.6, 0.1), matVestDark);
+  trimL.position.set(-0.32, 0.05, 0.78);
+  trimL.rotation.z = 0.35;
+  bodyGroup.add(trimL);
+  const trimR = trimL.clone(); trimR.position.x = 0.32; trimR.rotation.z = -0.35;
+  bodyGroup.add(trimR);
+
+  // Vest shoulders flap
+  const shoulderL = new THREE.Mesh(new THREE.SphereGeometry(0.32, seg, seg), matVest);
+  shoulderL.position.set(-0.85, 0.35, 0);
+  shoulderL.scale.set(1.0, 0.7, 1.0);
+  bodyGroup.add(shoulderL);
+  const shoulderR = shoulderL.clone();
+  shoulderR.position.x = 0.85;
+  bodyGroup.add(shoulderR);
+
+  // -------------------------------------
+  // BELT — brown with brass buckle
+  // -------------------------------------
+  const beltGeo = new THREE.CylinderGeometry(0.78, 0.78, 0.16, seg, 1, true);
+  const belt = new THREE.Mesh(beltGeo, matBelt);
+  belt.position.y = -0.52;
+  belt.scale.set(1.15, 1.0, 1.0);
+  bodyGroup.add(belt);
+
+  const buckleGeo = new THREE.BoxGeometry(0.22, 0.18, 0.05);
+  const buckle = new THREE.Mesh(buckleGeo, matBuckle);
+  buckle.position.set(0, -0.52, 0.82);
+  bodyGroup.add(buckle);
+
+  // -------------------------------------
+  // HEAD — pear / egg shape, NO neck
+  // -------------------------------------
+  const headPivot = new THREE.Group();
+  headPivot.name = 'headPivot';
+  // Sit head directly on shoulders — almost no neck
+  headPivot.position.y = 1.95;
+  shrek.add(headPivot);
+
+  // Upper skull — slightly larger sphere
+  const skullGeo = new THREE.SphereGeometry(0.62, seg, seg);
+  const skull = new THREE.Mesh(skullGeo, matSkinLite);
+  skull.scale.set(1.05, 1.15, 1.02);
+  skull.position.y = 0.08;
+  headPivot.add(skull);
+
+  // Lower face / jowls — a wider, sagging sphere blended below
+  const lowerFaceGeo = new THREE.SphereGeometry(0.58, seg, seg);
+  const lowerFace = new THREE.Mesh(lowerFaceGeo, matSkin);
+  lowerFace.scale.set(1.12, 0.78, 1.02);
+  lowerFace.position.y = -0.28;
+  headPivot.add(lowerFace);
+
+  // Side jowls — heavy hanging cheek
+  const jowlGeoL = new THREE.SphereGeometry(0.28, seg, seg);
+  const jowlL = new THREE.Mesh(jowlGeoL, matSkinDark);
+  jowlL.scale.set(0.95, 0.85, 0.95);
+  jowlL.position.set(-0.45, -0.38, 0.15);
+  headPivot.add(jowlL);
+  const jowlR = jowlL.clone();
+  jowlR.position.x = 0.45;
+  headPivot.add(jowlR);
+
+  // Double chin
+  const chinGeo = new THREE.SphereGeometry(0.32, seg, seg);
+  const chin = new THREE.Mesh(chinGeo, matSkinDark);
+  chin.scale.set(1.1, 0.55, 0.95);
+  chin.position.set(0, -0.55, 0.18);
+  headPivot.add(chin);
+
+  // Top-of-head highlight blob (slightly different color makes head feel rounded/pear)
+  const crownGeo = new THREE.SphereGeometry(0.42, seg, seg);
+  const crown = new THREE.Mesh(crownGeo, matSkinLite);
+  crown.scale.set(1.0, 0.6, 0.9);
+  crown.position.set(0, 0.42, -0.05);
+  headPivot.add(crown);
+
+  // -------------------------------------
+  // EARS — SIGNATURE feature, horizontal tubes/horns from sides of head
+  // -------------------------------------
+  const buildEar = (side) => {
+    const earGrp = new THREE.Group();
+    earGrp.name = 'ear_' + side;
+    // Main cylinder
+    const cyl = new THREE.CylinderGeometry(0.10, 0.13, 0.42, 16, 1, false);
+    const cylMesh = new THREE.Mesh(cyl, matSkin);
+    // Rotate so it points to the side (along x)
+    cylMesh.rotation.z = Math.PI / 2;
+    cylMesh.position.x = side * 0.21;
+    earGrp.add(cylMesh);
+
+    // Flared end (slight cone outward)
+    const flareGeo = new THREE.CylinderGeometry(0.16, 0.12, 0.08, 16, 1, false);
+    const flare = new THREE.Mesh(flareGeo, matSkin);
+    flare.rotation.z = Math.PI / 2;
+    flare.position.x = side * 0.46;
+    earGrp.add(flare);
+
+    // Cap (close the end)
+    const capGeo = new THREE.SphereGeometry(0.15, 12, 12);
+    const cap = new THREE.Mesh(capGeo, matSkinDark);
+    cap.scale.set(0.4, 1.0, 1.0);
+    cap.position.x = side * 0.5;
+    earGrp.add(cap);
+
+    // Base attachment (small sphere where ear meets head)
+    const baseGeo = new THREE.SphereGeometry(0.14, 12, 12);
+    const base = new THREE.Mesh(baseGeo, matSkin);
+    base.position.x = side * 0.02;
+    earGrp.add(base);
+
+    return earGrp;
+  };
+  const earL = buildEar(-1);
+  earL.position.set(-0.52, -0.05, 0);
+  // slight droop down and back
+  earL.rotation.z = -0.12;
+  earL.rotation.y = -0.15;
+  headPivot.add(earL);
+
+  const earR = buildEar(1);
+  earR.position.set(0.52, -0.05, 0);
+  earR.rotation.z = 0.12;
+  earR.rotation.y = 0.15;
+  headPivot.add(earR);
+
+  // -------------------------------------
+  // BROW RIDGE — heavy, bulging, casts a shadow over eyes
+  // -------------------------------------
+  const browRidgeGeo = new THREE.SphereGeometry(0.45, seg, seg);
+  const browRidge = new THREE.Mesh(browRidgeGeo, matSkin);
+  browRidge.scale.set(1.05, 0.32, 0.6);
+  browRidge.position.set(0, 0.12, 0.42);
+  headPivot.add(browRidge);
+
+  // -------------------------------------
+  // EYES — small, sunken, brown irises
+  // -------------------------------------
+  const buildEye = (side) => {
+    const eyeGrp = new THREE.Group();
+    // Eye socket recess (darker bump)
+    const socketGeo = new THREE.SphereGeometry(0.13, 16, 16);
+    const socket = new THREE.Mesh(socketGeo, matSkinDark);
+    socket.scale.set(1.0, 1.0, 0.55);
+    eyeGrp.add(socket);
+    // White
+    const whiteGeo = new THREE.SphereGeometry(0.10, 16, 16);
+    const white = new THREE.Mesh(whiteGeo, matEyeW);
+    white.scale.set(1.0, 1.0, 0.7);
+    white.position.z = 0.04;
+    eyeGrp.add(white);
+    // Iris
+    const irisGeo = new THREE.SphereGeometry(0.055, 12, 12);
+    const iris = new THREE.Mesh(irisGeo, matIris);
+    iris.position.z = 0.10;
+    eyeGrp.add(iris);
+    // Pupil
+    const pupilGeo = new THREE.SphereGeometry(0.025, 8, 8);
+    const pupil = new THREE.Mesh(pupilGeo, matPupil);
+    pupil.position.z = 0.13;
+    eyeGrp.add(pupil);
+    eyeGrp.position.set(side * 0.18, -0.02, 0.51);
+    return eyeGrp;
+  };
+  headPivot.add(buildEye(-1));
+  headPivot.add(buildEye(1));
+
+  // -------------------------------------
+  // EYEBROWS — thick brown-orange, on brow ridge
+  // -------------------------------------
+  const buildBrow = (side) => {
+    const bGeo = new THREE.BoxGeometry(0.22, 0.05, 0.08);
+    const b = new THREE.Mesh(bGeo, matEyebrow);
+    b.position.set(side * 0.18, 0.12, 0.55);
+    b.rotation.z = side * -0.22; // angle inward at center
+    return b;
+  };
+  headPivot.add(buildBrow(-1));
+  headPivot.add(buildBrow(1));
+
+  // -------------------------------------
+  // NOSE — big, bulbous, upturned
+  // -------------------------------------
+  const noseGrp = new THREE.Group();
+  noseGrp.name = 'nose';
+  // Bridge (slim near brow)
+  const bridgeGeo = new THREE.SphereGeometry(0.10, 14, 14);
+  const bridge = new THREE.Mesh(bridgeGeo, matNose);
+  bridge.scale.set(0.7, 1.0, 1.0);
+  bridge.position.set(0, 0.04, 0);
+  noseGrp.add(bridge);
+  // Big bulbous tip
+  const tipGeo = new THREE.SphereGeometry(0.16, 16, 16);
+  const tip = new THREE.Mesh(tipGeo, matNose);
+  tip.scale.set(1.15, 0.9, 1.1);
+  tip.position.set(0, -0.12, 0.10);
+  noseGrp.add(tip);
+  // Nostrils — two small dark dots
+  const nostrilGeo = new THREE.SphereGeometry(0.025, 8, 8);
+  const nL = new THREE.Mesh(nostrilGeo, matPupil);
+  nL.position.set(-0.06, -0.16, 0.22);
+  noseGrp.add(nL);
+  const nR = nL.clone(); nR.position.x = 0.06;
+  noseGrp.add(nR);
+  noseGrp.position.set(0, -0.06, 0.55);
+  // Slight upturn
+  noseGrp.rotation.x = -0.15;
+  headPivot.add(noseGrp);
+
+  // -------------------------------------
+  // MOUTH — wide line with slight underbite
+  // -------------------------------------
+  const mouthGrp = new THREE.Group();
+  mouthGrp.name = 'mouth';
+  // Mouth line (torus segment as curve)
+  const mouthLineGeo = new THREE.TorusGeometry(0.16, 0.025, 8, 16, Math.PI);
+  const mouthLine = new THREE.Mesh(mouthLineGeo, matMouth);
+  mouthLine.rotation.x = Math.PI; // curve downward smile
+  mouthLine.position.set(0, -0.38, 0.50);
+  headPivot.add(mouthLine);
+  mouthGrp.userData.line = mouthLine;
+
+  // Open mouth (hidden by default, shown during roar)
+  const openMouthGeo = new THREE.SphereGeometry(0.18, 14, 14);
+  const openMouth = new THREE.Mesh(openMouthGeo, matMouth);
+  openMouth.scale.set(1.0, 0.6, 0.4);
+  openMouth.position.set(0, -0.40, 0.52);
+  openMouth.visible = false;
+  headPivot.add(openMouth);
+  mouthGrp.userData.open = openMouth;
+
+  // Lower teeth (underbite) — two small white blocks visible
+  const toothL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.06, 0.04), matTooth);
+  toothL.position.set(-0.06, -0.36, 0.55);
+  headPivot.add(toothL);
+  const toothR = toothL.clone();
+  toothR.position.x = 0.06;
+  headPivot.add(toothR);
+
+  headPivot.userData.mouth = mouthGrp;
+
+  // -------------------------------------
+  // ARMS — stocky, with green hands
+  // -------------------------------------
+  const buildArm = (side) => {
+    const armGrp = new THREE.Group();
+    armGrp.name = 'arm_' + (side < 0 ? 'L' : 'R');
+
+    // Upper arm — has vest sleeve top
+    const upperGeo = new THREE.CylinderGeometry(0.20, 0.18, 0.6, 16);
+    const upper = new THREE.Mesh(upperGeo, matTunic);
+    upper.position.y = -0.3;
+    armGrp.add(upper);
+
+    // Vest sleeve cap
+    const sleeveGeo = new THREE.CylinderGeometry(0.24, 0.20, 0.20, 16);
+    const sleeve = new THREE.Mesh(sleeveGeo, matVest);
+    sleeve.position.y = -0.05;
+    armGrp.add(sleeve);
+
+    // Elbow joint
+    const elbowGeo = new THREE.SphereGeometry(0.18, 14, 14);
+    const elbow = new THREE.Mesh(elbowGeo, matTunic);
+    elbow.position.y = -0.6;
+    armGrp.add(elbow);
+
+    // Forearm
+    const foreGeo = new THREE.CylinderGeometry(0.16, 0.18, 0.55, 16);
+    const fore = new THREE.Mesh(foreGeo, matSkin);
+    fore.position.y = -0.92;
+    armGrp.add(fore);
+
+    // Tunic cuff
+    const cuffGeo = new THREE.CylinderGeometry(0.21, 0.19, 0.10, 16);
+    const cuff = new THREE.Mesh(cuffGeo, matTunic);
+    cuff.position.y = -0.68;
+    armGrp.add(cuff);
+
+    // Hand — chunky four-fingered
+    const handGeo = new THREE.SphereGeometry(0.22, 16, 16);
+    const hand = new THREE.Mesh(handGeo, matSkin);
+    hand.scale.set(1.0, 0.85, 0.9);
+    hand.position.y = -1.25;
+    armGrp.add(hand);
+
+    // Knuckles / fingers — 4 small bumps on the front
+    for (let i = 0; i < 4; i++) {
+      const fGeo = new THREE.SphereGeometry(0.055, 8, 8);
+      const f = new THREE.Mesh(fGeo, matSkin);
+      f.position.set(-0.12 + i * 0.08, -1.38, 0.12);
+      armGrp.add(f);
+    }
+
+    armGrp.position.set(side * 0.95, 1.45, 0);
+    return armGrp;
+  };
+  const armL = buildArm(-1);
+  const armR = buildArm(1);
+  shrek.add(armL);
+  shrek.add(armR);
+
+  // -------------------------------------
+  // LEGS — short, stocky, with green feet
+  // -------------------------------------
+  const buildLeg = (side) => {
+    const legGrp = new THREE.Group();
+    legGrp.name = 'leg_' + (side < 0 ? 'L' : 'R');
+
+    // Pants upper
+    const thighGeo = new THREE.CylinderGeometry(0.27, 0.24, 0.55, 16);
+    const thigh = new THREE.Mesh(thighGeo, matPants);
+    thigh.position.y = -0.28;
+    legGrp.add(thigh);
+
+    // Knee
+    const kneeGeo = new THREE.SphereGeometry(0.22, 14, 14);
+    const knee = new THREE.Mesh(kneeGeo, matPants);
+    knee.position.y = -0.55;
+    legGrp.add(knee);
+
+    // Lower leg — pants gathered, with green ankle showing
+    const shinGeo = new THREE.CylinderGeometry(0.21, 0.24, 0.45, 16);
+    const shin = new THREE.Mesh(shinGeo, matPants);
+    shin.position.y = -0.80;
+    legGrp.add(shin);
+
+    // Pants cuff (gathered look — slight bulge)
+    const cuffGeo = new THREE.CylinderGeometry(0.27, 0.24, 0.10, 16);
+    const cuff = new THREE.Mesh(cuffGeo, new THREE.MeshLambertMaterial({ color: COL.pantsDark }));
+    cuff.position.y = -1.02;
+    legGrp.add(cuff);
+
+    // Bare green ankle
+    const ankleGeo = new THREE.CylinderGeometry(0.18, 0.20, 0.10, 16);
+    const ankle = new THREE.Mesh(ankleGeo, matSkin);
+    ankle.position.y = -1.12;
+    legGrp.add(ankle);
+
+    // Foot — big flat green
+    const footGeo = new THREE.SphereGeometry(0.22, 14, 14);
+    const foot = new THREE.Mesh(footGeo, matSkin);
+    foot.scale.set(1.0, 0.55, 1.6);
+    foot.position.set(0, -1.20, 0.10);
+    legGrp.add(foot);
+
+    // 4 toes
+    for (let i = 0; i < 4; i++) {
+      const tGeo = new THREE.SphereGeometry(0.055, 8, 8);
+      const t = new THREE.Mesh(tGeo, matSkin);
+      t.position.set(-0.12 + i * 0.08, -1.22, 0.30);
+      legGrp.add(t);
+    }
+
+    legGrp.position.set(side * 0.30, 1.05, 0);
+    return legGrp;
+  };
+  const legL = buildLeg(-1);
+  const legR = buildLeg(1);
+  shrek.add(legL);
+  shrek.add(legR);
+
+  // -------------------------------------
+  // STORE REFS FOR ANIMATION
+  // -------------------------------------
+  shrek.userData.parts = {
+    body: bodyGroup,
+    head: headPivot,
+    armL, armR,
+    legL, legR,
+    torso, belly,
+    mouth: mouthGrp,
+  };
+
+  return shrek;
+}
+
+// ============================================================
+// THREE.JS SCENE
+// ============================================================
+const canvas = document.getElementById('game');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: !IS_MOBILE });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, IS_MOBILE ? 1.5 : 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setClearColor(0x6c8a4a);
+
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x6c8a4a, 25, 80);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 200);
+camera.position.set(0, 4, 8);
+
+// Lights — keep minimal, no shadow maps
+const hemi = new THREE.HemisphereLight(0xfff5d8, 0x3a5018, 0.85);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff0c8, 0.9);
+sun.position.set(10, 18, 6);
+scene.add(sun);
+const fill = new THREE.DirectionalLight(0x88aa66, 0.35);
+fill.position.set(-6, 6, -5);
+scene.add(fill);
+
+// ============================================================
+// WORLD — swamp
+// ============================================================
+// Ground
+const groundMat = new THREE.MeshLambertMaterial({ color: 0x4a6420 });
+const groundGeo = new THREE.PlaneGeometry(120, 120, 12, 12);
+// add some bumpiness
+const gPos = groundGeo.attributes.position;
+for (let i = 0; i < gPos.count; i++) {
+  const x = gPos.getX(i), y = gPos.getY(i);
+  if (Math.abs(x) < 55 && Math.abs(y) < 55) {
+    gPos.setZ(i, (Math.sin(x*0.3)+Math.cos(y*0.3))*0.25);
+  }
+}
+groundGeo.computeVertexNormals();
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI/2;
+scene.add(ground);
+
+// Patches of darker mud
+for (let i = 0; i < 8; i++) {
+  const m = new THREE.Mesh(
+    new THREE.CircleGeometry(2 + Math.random()*2, 12),
+    new THREE.MeshLambertMaterial({ color: 0x3a4818 })
+  );
+  m.rotation.x = -Math.PI/2;
+  m.position.set((Math.random()-0.5)*40, 0.02, (Math.random()-0.5)*40);
+  scene.add(m);
+}
+
+// Sky dome — simple gradient via large sphere
+const skyGeo = new THREE.SphereGeometry(100, 32, 16);
+const skyMat = new THREE.MeshBasicMaterial({ color: 0x8aa45a, side: THREE.BackSide });
+scene.add(new THREE.Mesh(skyGeo, skyMat));
+
+// === Trees ===
+function makeTree(x, z, scl) {
+  scl = scl || 1;
+  const tree = new THREE.Group();
+  const trunk = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.3*scl, 0.4*scl, 2.5*scl, 8),
+    new THREE.MeshLambertMaterial({ color: 0x4a2e14 })
+  );
+  trunk.position.y = 1.25*scl;
+  tree.add(trunk);
+  for (let i = 0; i < 3; i++) {
+    const blob = new THREE.Mesh(
+      new THREE.SphereGeometry(1.2*scl, 12, 10),
+      new THREE.MeshLambertMaterial({ color: 0x3a5818 })
+    );
+    blob.position.set((Math.random()-0.5)*0.6*scl, 2.5*scl + i*0.6*scl, (Math.random()-0.5)*0.6*scl);
+    blob.scale.set(1, 0.9, 1);
+    tree.add(blob);
+  }
+  tree.position.set(x, 0, z);
+  scene.add(tree);
+  return tree;
+}
+for (let i = 0; i < 18; i++) {
+  const ang = Math.random()*Math.PI*2;
+  const r = 12 + Math.random()*22;
+  makeTree(Math.cos(ang)*r, Math.sin(ang)*r, 0.8 + Math.random()*0.5);
+}
+
+// === Mushrooms / bushes ===
+for (let i = 0; i < 14; i++) {
+  const bush = new THREE.Mesh(
+    new THREE.SphereGeometry(0.6 + Math.random()*0.4, 10, 8),
+    new THREE.MeshLambertMaterial({ color: 0x4a6a22 })
+  );
+  bush.scale.y = 0.7;
+  bush.position.set((Math.random()-0.5)*45, 0.4, (Math.random()-0.5)*45);
+  scene.add(bush);
+}
+for (let i = 0; i < 10; i++) {
+  const mushroom = new THREE.Group();
+  const stem = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.10, 0.13, 0.4, 8),
+    new THREE.MeshLambertMaterial({ color: 0xe8d8a0 })
+  );
+  stem.position.y = 0.2;
+  mushroom.add(stem);
+  const cap = new THREE.Mesh(
+    new THREE.SphereGeometry(0.30, 10, 8, 0, Math.PI*2, 0, Math.PI/2),
+    new THREE.MeshLambertMaterial({ color: 0xc04848 })
+  );
+  cap.position.y = 0.4;
+  mushroom.add(cap);
+  mushroom.position.set((Math.random()-0.5)*40, 0, (Math.random()-0.5)*40);
+  scene.add(mushroom);
+}
+
+// === Shrek's outhouse ===
+const outhouse = new THREE.Group();
+const ohWalls = new THREE.Mesh(
+  new THREE.BoxGeometry(1.6, 2.2, 1.6),
+  new THREE.MeshLambertMaterial({ color: 0x6a3e1a })
+);
+ohWalls.position.y = 1.1;
+outhouse.add(ohWalls);
+const ohRoof = new THREE.Mesh(
+  new THREE.ConeGeometry(1.4, 0.8, 4),
+  new THREE.MeshLambertMaterial({ color: 0x4a2810 })
+);
+ohRoof.rotation.y = Math.PI/4;
+ohRoof.position.y = 2.55;
+outhouse.add(ohRoof);
+// door (heart cutout)
+const ohDoor = new THREE.Mesh(
+  new THREE.BoxGeometry(0.7, 1.4, 0.05),
+  new THREE.MeshLambertMaterial({ color: 0x8a5028 })
+);
+ohDoor.position.set(0, 1.0, 0.83);
+outhouse.add(ohDoor);
+const heart = new THREE.Mesh(
+  new THREE.BoxGeometry(0.18, 0.18, 0.06),
+  new THREE.MeshBasicMaterial({ color: 0x1a0808 })
+);
+heart.rotation.z = Math.PI/4;
+heart.position.set(0, 1.4, 0.86);
+outhouse.add(heart);
+outhouse.position.set(-7, 0, -4);
+outhouse.userData = { type: 'outhouse', label: 'Шрек думает 💭' };
+scene.add(outhouse);
+
+// === Pond / mud puddle ===
+const pondGrp = new THREE.Group();
+const pondGeo = new THREE.CircleGeometry(2.6, 24);
+const pond = new THREE.Mesh(pondGeo,
+  new THREE.MeshLambertMaterial({ color: 0x3a5818, emissive: 0x1a2810, emissiveIntensity: 0.4 })
+);
+pond.rotation.x = -Math.PI/2;
+pond.position.y = 0.05;
+pondGrp.add(pond);
+const pondRim = new THREE.Mesh(
+  new THREE.TorusGeometry(2.6, 0.2, 8, 24),
+  new THREE.MeshLambertMaterial({ color: 0x3a2810 })
+);
+pondRim.rotation.x = -Math.PI/2;
+pondRim.position.y = 0.05;
+pondGrp.add(pondRim);
+pondGrp.position.set(6, 0, -2);
+pondGrp.userData = { type: 'pond', label: 'Принять грязевую ванну' };
+scene.add(pondGrp);
+
+// === Onions ===
+const onions = [];
+function makeOnion(x, z) {
+  const o = new THREE.Group();
+  const bulb = new THREE.Mesh(
+    new THREE.SphereGeometry(0.28, 14, 12),
+    new THREE.MeshLambertMaterial({ color: 0xe8c878 })
+  );
+  bulb.scale.y = 1.15;
+  o.add(bulb);
+  // stripes - tiny torus rings
+  for (let i = 0; i < 3; i++) {
+    const ring = new THREE.Mesh(
+      new THREE.TorusGeometry(0.27 - i*0.02, 0.012, 6, 16),
+      new THREE.MeshLambertMaterial({ color: 0xb89858 })
+    );
+    ring.rotation.x = Math.PI/2;
+    ring.position.y = (i-1)*0.08;
+    o.add(ring);
+  }
+  // green sprout
+  const sprout = new THREE.Mesh(
+    new THREE.ConeGeometry(0.06, 0.3, 6),
+    new THREE.MeshLambertMaterial({ color: 0x6aa830 })
+  );
+  sprout.position.y = 0.4;
+  o.add(sprout);
+  o.position.set(x, 0.3, z);
+  o.userData = { type: 'onion', collected: false };
+  scene.add(o);
+  onions.push(o);
+}
+for (let i = 0; i < 10; i++) {
+  const ang = Math.random()*Math.PI*2;
+  const r = 4 + Math.random()*16;
+  makeOnion(Math.cos(ang)*r, Math.sin(ang)*r);
+}
+
+// === Villagers ===
+const villagers = [];
+function makeVillager(x, z) {
+  const v = new THREE.Group();
+  // legs (two thin boxes)
+  const legGeo = new THREE.BoxGeometry(0.12, 0.6, 0.12);
+  const legMat = new THREE.MeshLambertMaterial({ color: 0x4a3a20 });
+  const lL = new THREE.Mesh(legGeo, legMat); lL.position.set(-0.1, 0.3, 0); v.add(lL);
+  const lR = new THREE.Mesh(legGeo, legMat); lR.position.set(0.1, 0.3, 0); v.add(lR);
+  // body
+  const body = new THREE.Mesh(
+    new THREE.BoxGeometry(0.4, 0.6, 0.25),
+    new THREE.MeshLambertMaterial({ color: 0xa86048 })
+  );
+  body.position.y = 0.95;
+  v.add(body);
+  // head
+  const head = new THREE.Mesh(
+    new THREE.SphereGeometry(0.18, 12, 10),
+    new THREE.MeshLambertMaterial({ color: 0xe8c8a0 })
+  );
+  head.position.y = 1.4;
+  v.add(head);
+  // hat
+  const hat = new THREE.Mesh(
+    new THREE.ConeGeometry(0.16, 0.22, 8),
+    new THREE.MeshLambertMaterial({ color: 0x3a2818 })
+  );
+  hat.position.y = 1.62;
+  v.add(hat);
+  // torch
+  const torchGrp = new THREE.Group();
+  const stick = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.03, 0.03, 0.7, 6),
+    new THREE.MeshLambertMaterial({ color: 0x3a2810 })
+  );
+  stick.position.y = 0;
+  torchGrp.add(stick);
+  const flame = new THREE.Mesh(
+    new THREE.ConeGeometry(0.12, 0.25, 6),
+    new THREE.MeshBasicMaterial({ color: 0xff8830 })
+  );
+  flame.position.y = 0.45;
+  torchGrp.add(flame);
+  torchGrp.position.set(0.35, 1.1, 0);
+  torchGrp.userData.flame = flame;
+  v.add(torchGrp);
+  v.userData = { type: 'villager', scared: false, wanderT: Math.random()*Math.PI*2, torch: torchGrp };
+  v.position.set(x, 0, z);
+  scene.add(v);
+  villagers.push(v);
+  return v;
+}
+makeVillager(10, 8);
+makeVillager(-8, 11);
+makeVillager(12, -10);
+makeVillager(-12, -8);
+
+// === Danger sign + tiny knight ===
+const sign = new THREE.Group();
+const post = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.06, 0.06, 1.4, 6),
+  new THREE.MeshLambertMaterial({ color: 0x4a2e14 })
+);
+post.position.y = 0.7;
+sign.add(post);
+const board = new THREE.Mesh(
+  new THREE.BoxGeometry(1.0, 0.5, 0.06),
+  new THREE.MeshLambertMaterial({ color: 0xc8a040 })
+);
+board.position.y = 1.4;
+sign.add(board);
+// "!" mark
+const ex = new THREE.Mesh(
+  new THREE.BoxGeometry(0.08, 0.25, 0.08),
+  new THREE.MeshBasicMaterial({ color: 0x101010 })
+);
+ex.position.set(0, 1.45, 0.05);
+sign.add(ex);
+const exDot = new THREE.Mesh(
+  new THREE.BoxGeometry(0.08, 0.08, 0.08),
+  new THREE.MeshBasicMaterial({ color: 0x101010 })
+);
+exDot.position.set(0, 1.25, 0.05);
+sign.add(exDot);
+sign.position.set(15, 0, 5);
+scene.add(sign);
+
+// Tiny knight nearby
+const knight = new THREE.Group();
+const kBody = new THREE.Mesh(
+  new THREE.CylinderGeometry(0.25, 0.3, 0.7, 8),
+  new THREE.MeshLambertMaterial({ color: 0xa8b8c8 })
+);
+kBody.position.y = 0.7;
+knight.add(kBody);
+const kHead = new THREE.Mesh(
+  new THREE.BoxGeometry(0.32, 0.35, 0.32),
+  new THREE.MeshLambertMaterial({ color: 0xb8c8d8 })
+);
+kHead.position.y = 1.2;
+knight.add(kHead);
+const visor = new THREE.Mesh(
+  new THREE.BoxGeometry(0.34, 0.06, 0.02),
+  new THREE.MeshBasicMaterial({ color: 0x080808 })
+);
+visor.position.set(0, 1.22, 0.17);
+knight.add(visor);
+const plume = new THREE.Mesh(
+  new THREE.ConeGeometry(0.06, 0.2, 6),
+  new THREE.MeshLambertMaterial({ color: 0xc83838 })
+);
+plume.position.y = 1.5;
+knight.add(plume);
+knight.position.set(15.8, 0, 5);
+scene.add(knight);
+
+// === MAIN SHREK ===
+const shrek = buildShrek({ detail: 'high' });
+shrek.position.set(0, 0, 0);
+scene.add(shrek);
+
+// ============================================================
+// PLAYER CONTROL
+// ============================================================
+const player = {
+  pos: new THREE.Vector3(0, 0, 0),
+  vel: new THREE.Vector3(),
+  facing: 0,
+  speed: 0,
+  walkPhase: 0,
+  grounded: true,
+  vy: 0,
+  state: 'idle', // idle | walking | running | roaring | bathing | thinking
+  stateT: 0,
+  roarCount: 0,
+};
+
+const camCtl = {
+  yaw: 0,
+  pitch: 0.35,
+  dist: 7.5,
+  height: 2.8,
+};
+
+const keys = { w:false, a:false, s:false, d:false, shift:false, space:false, e:false, r:false };
+let interactTarget = null;
+
+window.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || e.key === 'ArrowUp') keys.w = true;
+  if (k === 'a' || e.key === 'ArrowLeft') keys.a = true;
+  if (k === 's' || e.key === 'ArrowDown') keys.s = true;
+  if (k === 'd' || e.key === 'ArrowRight') keys.d = true;
+  if (k === 'shift') keys.shift = true;
+  if (k === ' ') { keys.space = true; tryJump(); }
+  if (k === 'e') { keys.e = true; tryInteract(); }
+  if (k === 'r') { keys.r = true; tryRoar(); }
+});
+window.addEventListener('keyup', (e) => {
+  const k = e.key.toLowerCase();
+  if (k === 'w' || e.key === 'ArrowUp') keys.w = false;
+  if (k === 'a' || e.key === 'ArrowLeft') keys.a = false;
+  if (k === 's' || e.key === 'ArrowDown') keys.s = false;
+  if (k === 'd' || e.key === 'ArrowRight') keys.d = false;
+  if (k === 'shift') keys.shift = false;
+  if (k === ' ') keys.space = false;
+  if (k === 'e') keys.e = false;
+  if (k === 'r') keys.r = false;
+});
+
+// Mouse drag camera
+let dragging = false, dragX = 0, dragY = 0;
+canvas.addEventListener('mousedown', (e) => { dragging = true; dragX = e.clientX; dragY = e.clientY; });
+window.addEventListener('mouseup', () => { dragging = false; });
+window.addEventListener('mousemove', (e) => {
+  if (!dragging) return;
+  const dx = e.clientX - dragX;
+  const dy = e.clientY - dragY;
+  camCtl.yaw -= dx * 0.005;
+  camCtl.pitch = Math.max(0.05, Math.min(0.9, camCtl.pitch + dy * 0.004));
+  dragX = e.clientX;
+  dragY = e.clientY;
+});
+
+// ============================================================
+// MOBILE CONTROLS
+// ============================================================
+if (IS_MOBILE) {
+  document.getElementById('mobileCtrls').classList.add('active');
+  const joy = document.getElementById('joy');
+  const knob = document.getElementById('joyKnob');
+  let joyActive = false, joyId = null;
+  let joyCx = 0, joyCy = 0;
+  let joyDx = 0, joyDy = 0;
+
+  joy.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    joyActive = true; joyId = t.identifier;
+    const r = joy.getBoundingClientRect();
+    joyCx = r.left + r.width/2; joyCy = r.top + r.height/2;
+    e.preventDefault();
+  }, { passive: false });
+  joy.addEventListener('touchmove', (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      const t = e.changedTouches[i];
+      if (t.identifier !== joyId) continue;
+      let dx = t.clientX - joyCx; let dy = t.clientY - joyCy;
+      const len = Math.hypot(dx, dy);
+      const max = 50;
+      if (len > max) { dx = dx/len*max; dy = dy/len*max; }
+      joyDx = dx/max; joyDy = dy/max;
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    }
+    e.preventDefault();
+  }, { passive: false });
+  const joyEnd = (e) => {
+    for (let i = 0; i < e.changedTouches.length; i++) {
+      if (e.changedTouches[i].identifier === joyId) {
+        joyActive = false; joyId = null;
+        joyDx = 0; joyDy = 0;
+        knob.style.transform = 'translate(0,0)';
+      }
+    }
+  };
+  joy.addEventListener('touchend', joyEnd);
+  joy.addEventListener('touchcancel', joyEnd);
+
+  // Touch camera drag on the canvas (non-joystick area)
+  canvas.addEventListener('touchstart', (e) => {
+    const t = e.changedTouches[0];
+    // only if not in joystick area
+    if (t.clientX < window.innerWidth * 0.4 && t.clientY > window.innerHeight * 0.6) return;
+    dragging = true; dragX = t.clientX; dragY = t.clientY;
+  });
+  canvas.addEventListener('touchmove', (e) => {
+    if (!dragging) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - dragX;
+    const dy = t.clientY - dragY;
+    camCtl.yaw -= dx * 0.005;
+    camCtl.pitch = Math.max(0.05, Math.min(0.9, camCtl.pitch + dy * 0.004));
+    dragX = t.clientX; dragY = t.clientY;
+  });
+  canvas.addEventListener('touchend', () => { dragging = false; });
+
+  // Expose joy values
+  player.mobileJoy = () => ({ x: joyDx, y: joyDy });
+
+  document.getElementById('btnInteract').addEventListener('touchstart', (e) => { tryInteract(); e.preventDefault(); }, { passive: false });
+  document.getElementById('btnRoar').addEventListener('touchstart', (e) => { tryRoar(); e.preventDefault(); }, { passive: false });
+  document.getElementById('btnJump').addEventListener('touchstart', (e) => { tryJump(); e.preventDefault(); }, { passive: false });
+  const runBtn = document.getElementById('btnRun');
+  runBtn.addEventListener('touchstart', (e) => { keys.shift = true; e.preventDefault(); }, { passive: false });
+  runBtn.addEventListener('touchend', (e) => { keys.shift = false; e.preventDefault(); }, { passive: false });
+}
+
+// ============================================================
+// AUDIO
+// ============================================================
+let audioCtx = null;
+let audioStarted = false;
+function ensureAudio() {
+  if (audioStarted) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  audioStarted = true;
+  startAmbient();
+}
+function startAmbient() {
+  if (!audioCtx) return;
+  // Low rumble drone
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.value = 55;
+  const gain = audioCtx.createGain();
+  gain.gain.value = 0.04;
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.value = 220;
+  osc.connect(filter); filter.connect(gain); gain.connect(audioCtx.destination);
+  osc.start();
+  // Frog croaks every few seconds
+  setInterval(() => {
+    if (!audioCtx) return;
+    if (Math.random() > 0.6) return;
+    croak();
+  }, 2500);
+}
+function croak() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'square';
+  osc.frequency.setValueAtTime(120, t);
+  osc.frequency.exponentialRampToValueAtTime(70, t + 0.18);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.0, t);
+  g.gain.linearRampToValueAtTime(0.07, t + 0.02);
+  g.gain.linearRampToValueAtTime(0.0, t + 0.22);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.25);
+}
+function footstep() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(85, t);
+  osc.frequency.exponentialRampToValueAtTime(40, t + 0.08);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0.18, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 0.15);
+}
+function chime() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  [880, 1320, 1760].forEach((f, i) => {
+    const osc = audioCtx.createOscillator();
+    osc.type = 'triangle';
+    osc.frequency.value = f;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(0, t + i*0.06);
+    g.gain.linearRampToValueAtTime(0.14, t + i*0.06 + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.001, t + i*0.06 + 0.25);
+    osc.connect(g); g.connect(audioCtx.destination);
+    osc.start(t + i*0.06); osc.stop(t + i*0.06 + 0.3);
+  });
+}
+function roarSound() {
+  if (!audioCtx) return;
+  const t = audioCtx.currentTime;
+  // Main descending saw
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sawtooth';
+  osc.frequency.setValueAtTime(220, t);
+  osc.frequency.exponentialRampToValueAtTime(60, t + 1.0);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t);
+  g.gain.linearRampToValueAtTime(0.32, t + 0.06);
+  g.gain.setValueAtTime(0.32, t + 0.7);
+  g.gain.exponentialRampToValueAtTime(0.001, t + 1.2);
+  const filter = audioCtx.createBiquadFilter();
+  filter.type = 'lowpass';
+  filter.frequency.setValueAtTime(1600, t);
+  filter.frequency.exponentialRampToValueAtTime(300, t + 1.0);
+  osc.connect(filter); filter.connect(g); g.connect(audioCtx.destination);
+  osc.start(t); osc.stop(t + 1.25);
+  // Noise layer
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * 1.0, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) data[i] = (Math.random()*2-1) * (1 - i/data.length);
+  const ns = audioCtx.createBufferSource();
+  ns.buffer = buf;
+  const ng = audioCtx.createGain();
+  ng.gain.value = 0.18;
+  const nf = audioCtx.createBiquadFilter();
+  nf.type = 'bandpass';
+  nf.frequency.value = 300;
+  nf.Q.value = 0.6;
+  ns.connect(nf); nf.connect(ng); ng.connect(audioCtx.destination);
+  ns.start(t);
+}
+
+// ============================================================
+// THOUGHTS
+// ============================================================
+const THOUGHTS = [
+  'Это моё болото!',
+  'Луковицы имеют слои.',
+  'Огры как лук.',
+  'Убирайтесь из моего болота!',
+  'Лучше, чем парфе!',
+  'Что ты делаешь в моём болоте?!',
+  'Ослик, помолчи.',
+  'Где мой завтрак?',
+];
+let thoughtIdx = 0;
+const thoughtEl = document.getElementById('thought');
+function nextThought() {
+  thoughtIdx = (thoughtIdx + 1 + Math.floor(Math.random()*2)) % THOUGHTS.length;
+  thoughtEl.textContent = THOUGHTS[thoughtIdx];
+}
+setInterval(nextThought, 7000);
+
+// ============================================================
+// INTERACTIONS
+// ============================================================
+let onionsCollected = 0;
+const onionBox = document.getElementById('onionBox');
+const roarBox = document.getElementById('roarBox');
+const promptEl = document.getElementById('prompt');
+
+function findInteractTarget() {
+  const sp = shrek.position;
+  let best = null;
+  let bestDist = 2.5;
+  // onions
+  for (const o of onions) {
+    if (o.userData.collected) continue;
+    const d = sp.distanceTo(o.position);
+    if (d < bestDist) { bestDist = d; best = o; }
+  }
+  // outhouse
+  const dO = sp.distanceTo(outhouse.position);
+  if (dO < 3) { if (dO < bestDist) { bestDist = dO; best = outhouse; } }
+  // pond
+  const dP = sp.distanceTo(pondGrp.position);
+  if (dP < 3) { if (dP < bestDist) { bestDist = dP; best = pondGrp; } }
+  return best;
+}
+
+function tryInteract() {
+  ensureAudio();
+  const t = findInteractTarget();
+  if (!t) return;
+  if (t.userData.type === 'onion') {
+    t.userData.collected = true;
+    scene.remove(t);
+    onionsCollected++;
+    onionBox.textContent = '🧅 ' + onionsCollected + '/10';
+    thoughtEl.textContent = 'Луковицы имеют слои.';
+    chime();
+    checkWin();
+  } else if (t.userData.type === 'outhouse') {
+    player.state = 'thinking';
+    player.stateT = 0;
+    thoughtEl.textContent = 'Шрек думает... 💭';
+  } else if (t.userData.type === 'pond') {
+    player.state = 'bathing';
+    player.stateT = 0;
+    thoughtEl.textContent = 'Грязевая ванна — лучшее лекарство!';
+    // splash effect
+    flashScreen(0x3a5818, 0.3);
+  }
+}
+
+function tryRoar() {
+  ensureAudio();
+  if (player.state === 'roaring') return;
+  player.state = 'roaring';
+  player.stateT = 0;
+  thoughtEl.textContent = 'РРРРРАААААААА!!!';
+  roarSound();
+  // scare nearby villagers
+  for (const v of villagers) {
+    if (v.userData.scared) continue;
+    const d = shrek.position.distanceTo(v.position);
+    if (d < 14) {
+      v.userData.scared = true;
+      v.userData.scareT = 0;
+      // flee direction
+      const dx = v.position.x - shrek.position.x;
+      const dz = v.position.z - shrek.position.z;
+      const len = Math.hypot(dx, dz) || 1;
+      v.userData.fleeDir = { x: dx/len, z: dz/len };
+      player.roarCount++;
+    }
+  }
+  roarBox.textContent = '😱 ' + Math.min(player.roarCount, 4) + '/4';
+  checkWin();
+}
+
+function tryJump() {
+  if (!player.grounded) return;
+  if (player.state !== 'idle' && player.state !== 'walking' && player.state !== 'running') return;
+  player.vy = 7;
+  player.grounded = false;
+}
+
+function flashScreen(color, alpha) {
+  const fl = document.getElementById('flash');
+  // Compose CSS color
+  const r = (color >> 16) & 0xff, g = (color >> 8) & 0xff, b = color & 0xff;
+  fl.style.background = `rgb(${r},${g},${b})`;
+  fl.style.opacity = alpha;
+  setTimeout(() => { fl.style.opacity = 0; }, 200);
+}
+
+function checkWin() {
+  if (onionsCollected >= 10 && player.roarCount >= 4) {
+    setTimeout(() => {
+      document.getElementById('winStats').innerHTML =
+        `Лук собран: ${onionsCollected}/10 🧅<br>Деревенские разогнаны: ${Math.min(player.roarCount,4)}/4 😱`;
+      document.getElementById('winScreen').classList.add('show');
+    }, 600);
+  }
+}
+
+document.getElementById('restartBtn').addEventListener('click', () => {
+  location.reload();
+});
+
+// ============================================================
+// ANIMATION
+// ============================================================
+const clock = new THREE.Clock();
+let elapsed = 0;
+let lastFootstep = 0;
+
+function animateShrek(dt) {
+  const p = shrek.userData.parts;
+  const sp = player.speed;
+
+  // Idle breathing
+  const breath = Math.sin(elapsed * 2.4) * 0.03;
+  p.torso.scale.y = 1.1 + breath;
+  p.belly.scale.y = 0.85 + breath * 0.8;
+
+  if (player.state === 'roaring') {
+    // Roar pose: lean back, arms up, mouth open
+    player.stateT += dt;
+    const t = Math.min(player.stateT / 1.4, 1);
+    const lean = Math.sin(t * Math.PI) * 0.35;
+    shrek.rotation.x = -lean * 0.35;
+    p.armL.rotation.x = -1.8 - Math.sin(t * Math.PI) * 0.4;
+    p.armR.rotation.x = -1.8 - Math.sin(t * Math.PI) * 0.4;
+    p.armL.rotation.z = 0.5;
+    p.armR.rotation.z = -0.5;
+    p.head.rotation.x = -0.4 * Math.sin(t * Math.PI);
+    // mouth open
+    p.mouth.userData.line.visible = false;
+    p.mouth.userData.open.visible = true;
+    p.mouth.userData.open.scale.set(1.1 + Math.sin(elapsed*30)*0.1, 0.7 + Math.sin(elapsed*25)*0.15, 0.5);
+    if (player.stateT > 1.4) {
+      player.state = 'idle';
+      shrek.rotation.x = 0;
+      p.armL.rotation.set(0, 0, 0);
+      p.armR.rotation.set(0, 0, 0);
+      p.head.rotation.x = 0;
+      p.mouth.userData.line.visible = true;
+      p.mouth.userData.open.visible = false;
+    }
+    return;
+  }
+  if (player.state === 'thinking') {
+    player.stateT += dt;
+    // sit pose: lower body, arms on knees
+    shrek.position.y = Math.max(0, 0.2 - player.stateT * 0.2);
+    p.head.rotation.x = 0.3;
+    if (player.stateT > 3.0) {
+      player.state = 'idle';
+      shrek.position.y = 0;
+      p.head.rotation.x = 0;
+      thoughtEl.textContent = 'Лучше! Что дальше?';
+    }
+    return;
+  }
+  if (player.state === 'bathing') {
+    player.stateT += dt;
+    // splash bob
+    shrek.position.y = Math.sin(player.stateT * 8) * 0.15 - 0.1;
+    p.armL.rotation.z = Math.sin(player.stateT * 8) * 0.6 + 0.5;
+    p.armR.rotation.z = -Math.sin(player.stateT * 8) * 0.6 - 0.5;
+    if (player.stateT > 2.5) {
+      player.state = 'idle';
+      shrek.position.y = 0;
+      p.armL.rotation.set(0, 0, 0);
+      p.armR.rotation.set(0, 0, 0);
+      thoughtEl.textContent = 'Эх, хорошо!';
+    }
+    return;
+  }
+
+  // Walking/running cycle
+  if (sp > 0.05) {
+    const cycleSpeed = keys.shift ? 9 : 6;
+    player.walkPhase += dt * cycleSpeed * (0.5 + sp);
+    const phase = player.walkPhase;
+    const amp = keys.shift ? 0.7 : 0.45;
+    p.legL.rotation.x = Math.sin(phase) * amp;
+    p.legR.rotation.x = -Math.sin(phase) * amp;
+    p.armL.rotation.x = -Math.sin(phase) * amp * 0.8;
+    p.armR.rotation.x = Math.sin(phase) * amp * 0.8;
+    // body waddle: side tilt
+    shrek.rotation.z = Math.sin(phase) * 0.08;
+    // head bob — heavy stomp
+    p.head.position.y = 1.95 + Math.abs(Math.sin(phase * 2)) * 0.06;
+    // slight forward hunch
+    shrek.rotation.x = -0.08 - Math.abs(Math.sin(phase)) * 0.02;
+
+    // Footstep audio
+    if (player.grounded && Math.abs(Math.sin(phase) - Math.sin(phase - dt * cycleSpeed)) > 0.001) {
+      const fp = (Math.sin(phase) > 0.9 || Math.sin(phase) < -0.9);
+      if (fp && elapsed - lastFootstep > 0.25) {
+        footstep();
+        lastFootstep = elapsed;
+      }
+    }
+  } else {
+    // Idle pose
+    player.walkPhase = 0;
+    p.legL.rotation.x = 0;
+    p.legR.rotation.x = 0;
+    p.armL.rotation.x *= 0.85;
+    p.armR.rotation.x *= 0.85;
+    shrek.rotation.z = 0;
+    p.head.position.y = 1.95 + Math.sin(elapsed * 1.6) * 0.025;
+    // idle head sway
+    p.head.rotation.y = Math.sin(elapsed * 0.7) * 0.1;
+    shrek.rotation.x = 0;
+  }
+}
+
+// ============================================================
+// MAIN LOOP
+// ============================================================
+let gameStarted = false;
+
+function updatePlayer(dt) {
+  if (!gameStarted) return;
+  if (player.state === 'roaring' || player.state === 'thinking' || player.state === 'bathing') {
+    player.speed = 0;
+    return;
+  }
+
+  let mx = 0, my = 0;
+  if (keys.w) my -= 1;
+  if (keys.s) my += 1;
+  if (keys.a) mx -= 1;
+  if (keys.d) mx += 1;
+  if (IS_MOBILE && player.mobileJoy) {
+    const j = player.mobileJoy();
+    if (Math.abs(j.x) > 0.05) mx = j.x;
+    if (Math.abs(j.y) > 0.05) my = j.y;
+  }
+
+  const mag = Math.hypot(mx, my);
+  if (mag > 0.05) {
+    mx /= mag; my /= mag;
+    // Convert input relative to camera yaw
+    const cy = Math.cos(camCtl.yaw), sy = Math.sin(camCtl.yaw);
+    const wx = mx * cy + my * sy;
+    const wz = -mx * sy + my * cy;
+    const targetFacing = Math.atan2(wx, wz);
+    // smooth turn
+    let df = targetFacing - player.facing;
+    while (df > Math.PI) df -= Math.PI*2;
+    while (df < -Math.PI) df += Math.PI*2;
+    player.facing += df * Math.min(1, dt * 10);
+    const speed = (keys.shift ? 5.5 : 3.0);
+    shrek.position.x += wx * speed * dt;
+    shrek.position.z += wz * speed * dt;
+    player.speed = keys.shift ? 1.0 : 0.6;
+  } else {
+    player.speed = 0;
+  }
+  // clamp to area
+  shrek.position.x = Math.max(-45, Math.min(45, shrek.position.x));
+  shrek.position.z = Math.max(-45, Math.min(45, shrek.position.z));
+
+  // Gravity / jump
+  if (!player.grounded || player.vy > 0) {
+    player.vy -= 18 * dt;
+    shrek.position.y += player.vy * dt;
+    if (shrek.position.y <= 0) { shrek.position.y = 0; player.vy = 0; player.grounded = true; }
+  }
+
+  shrek.rotation.y = player.facing;
+}
+
+function updateCamera() {
+  // 3rd person follow
+  const tgtY = camCtl.pitch;
+  const cosP = Math.cos(tgtY), sinP = Math.sin(tgtY);
+  const cosY = Math.cos(camCtl.yaw), sinY = Math.sin(camCtl.yaw);
+  const dist = camCtl.dist;
+  const camX = shrek.position.x - sinY * cosP * dist;
+  const camY = shrek.position.y + sinP * dist + 1.5;
+  const camZ = shrek.position.z - cosY * cosP * dist;
+  camera.position.lerp(new THREE.Vector3(camX, camY, camZ), 0.15);
+  camera.lookAt(shrek.position.x, shrek.position.y + 1.4, shrek.position.z);
+}
+
+function updateVillagers(dt) {
+  for (const v of villagers) {
+    if (v.userData.scared) {
+      v.userData.scareT += dt;
+      const fd = v.userData.fleeDir;
+      v.position.x += fd.x * 6 * dt;
+      v.position.z += fd.z * 6 * dt;
+      // shake
+      v.rotation.z = Math.sin(elapsed * 25) * 0.2;
+      // arms up via rotation of body (simulate panic)
+      // remove when far
+      if (v.position.length() > 60 && v.parent) {
+        scene.remove(v);
+      }
+    } else {
+      v.userData.wanderT += dt;
+      const a = v.userData.wanderT * 0.3;
+      v.position.x += Math.cos(a) * 0.6 * dt;
+      v.position.z += Math.sin(a * 1.3) * 0.6 * dt;
+      v.rotation.y = -a;
+    }
+    // torch flame flicker
+    const flame = v.userData.torch.userData.flame;
+    flame.scale.set(0.9 + Math.random()*0.2, 0.9 + Math.random()*0.3, 0.9 + Math.random()*0.2);
+  }
+}
+
+function updateInteractPrompt() {
+  const t = findInteractTarget();
+  if (t && t !== interactTarget) interactTarget = t;
+  if (!t) { promptEl.classList.remove('show'); interactTarget = null; return; }
+  let label = '[E] Взаимодействовать';
+  if (t.userData.type === 'onion') label = IS_MOBILE ? 'Подобрать 🧅' : '[E] Подобрать 🧅';
+  else if (t.userData.type === 'outhouse') label = IS_MOBILE ? 'Шрек думает 💭' : '[E] Шрек думает 💭';
+  else if (t.userData.type === 'pond') label = IS_MOBILE ? 'Грязевая ванна' : '[E] Принять грязевую ванну';
+  promptEl.textContent = label;
+  promptEl.classList.add('show');
+}
+
+function loop() {
+  const dt = Math.min(0.05, clock.getDelta());
+  elapsed += dt;
+  updatePlayer(dt);
+  animateShrek(dt);
+  updateCamera();
+  if (gameStarted) {
+    updateVillagers(dt);
+    updateInteractPrompt();
+  }
+  renderer.render(scene, camera);
+  requestAnimationFrame(loop);
+}
+
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// ============================================================
+// TITLE SCREEN BUST
+// ============================================================
+(function setupBust() {
+  const bc = document.getElementById('bustCanvas');
+  const br = new THREE.WebGLRenderer({ canvas: bc, antialias: true, alpha: true });
+  br.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  const sz = Math.min(340, Math.min(window.innerWidth, window.innerHeight) * 0.7);
+  br.setSize(sz, sz);
+  const bs = new THREE.Scene();
+  const bc2 = new THREE.PerspectiveCamera(35, 1, 0.1, 50);
+  bc2.position.set(0, 2.2, 5.5);
+  bc2.lookAt(0, 2.2, 0);
+  bs.add(new THREE.HemisphereLight(0xfff5d8, 0x2a3a18, 0.9));
+  const sn = new THREE.DirectionalLight(0xfff0c8, 1.0);
+  sn.position.set(3, 5, 3);
+  bs.add(sn);
+  const halo = new THREE.PointLight(0x8FBC4F, 1.6, 8);
+  halo.position.set(0, 2.5, 2);
+  bs.add(halo);
+  const bustShrek = buildShrek({ detail: 'high' });
+  bs.add(bustShrek);
+
+  let bustRunning = true;
+  function bustLoop() {
+    if (!bustRunning) return;
+    bustShrek.rotation.y += 0.012;
+    // breath
+    const breath = Math.sin(performance.now()*0.002) * 0.04;
+    if (bustShrek.userData.parts) {
+      bustShrek.userData.parts.torso.scale.y = 1.1 + breath;
+      bustShrek.userData.parts.head.position.y = 1.95 + Math.sin(performance.now()*0.0014)*0.03;
+    }
+    br.render(bs, bc2);
+    requestAnimationFrame(bustLoop);
+  }
+  bustLoop();
+
+  window._stopBust = () => { bustRunning = false; };
+})();
+
+// ============================================================
+// START GAME
+// ============================================================
+document.getElementById('startBtn').addEventListener('click', () => {
+  ensureAudio();
+  document.getElementById('title').style.display = 'none';
+  document.getElementById('hud').classList.add('active');
+  gameStarted = true;
+  if (window._stopBust) window._stopBust();
+});
+
+loop();
+</script>
+</body>
+</html>
