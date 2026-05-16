@@ -28,24 +28,9 @@
   .cloud{position:absolute;background:#fff;border-radius:50px;opacity:.85}
   .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
 
-  /* Palms — curved trunk via SVG-like layering */
-  .palm{position:absolute;bottom:18%;width:120px;height:200px;transform-origin:bottom center}
-  .palm .trunk{position:absolute;bottom:0;left:50%;width:18px;height:150px;background:linear-gradient(90deg,#5a3215,#8b5a2b,#5a3215);border-radius:9px;transform:translateX(-50%) rotate(-6deg);transform-origin:bottom center;box-shadow:inset -3px 0 0 rgba(0,0,0,.25)}
-  .palm .trunk::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(0,0,0,.25) 14px 16px);border-radius:9px}
-  .palm .crown{position:absolute;top:6px;left:50%;width:0;height:0;transform:translateX(-50%)}
-  .palm .leaf{position:absolute;width:80px;height:22px;background:linear-gradient(90deg,#0a7a30,#1ec25b,#0a7a30);border-radius:50% 50% 50% 50% / 80% 80% 80% 80%;transform-origin:0% 50%;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
-  .palm .leaf::before{content:"";position:absolute;left:0;top:50%;width:100%;height:2px;background:rgba(0,0,0,.35);transform:translateY(-50%)}
-  .palm .leaf.l1{transform:rotate(20deg)}
-  .palm .leaf.l2{transform:rotate(-20deg)}
-  .palm .leaf.l3{transform:rotate(60deg) scale(.95)}
-  .palm .leaf.l4{transform:rotate(-60deg) scale(.95)}
-  .palm .leaf.l5{transform:rotate(180deg) scaleX(-1)}
-  .palm .leaf.l6{transform:rotate(160deg) scaleX(-1) scale(.95)}
-  .palm .leaf.l7{transform:rotate(-160deg) scaleX(-1) scale(.95)}
-  .palm .coco{position:absolute;top:0;left:50%;width:10px;height:10px;background:#5a3215;border-radius:50%}
-  .palm .coco.c1{transform:translate(-12px,2px)}
-  .palm .coco.c2{transform:translate(2px,2px)}
-  .palm .coco.c3{transform:translate(-5px,8px)}
+  /* Palms — single SVG so trunk + crown are one drawing */
+  .palm{position:absolute;bottom:18%;width:200px;height:260px;transform-origin:bottom center;pointer-events:none}
+  .palm svg{width:100%;height:100%;display:block;filter:drop-shadow(0 4px 4px rgba(0,0,0,.25))}
 
   .bigflag{position:absolute;width:160px;height:110px;background:var(--green);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.3);overflow:hidden}
   .bigflag::before{content:"";position:absolute;top:50%;left:50%;width:120px;height:70px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg)}
@@ -205,43 +190,75 @@
     <div class="pole" style="left:3100px;bottom:30%;height:230px"></div>
     <div class="bigflag" style="left:3104px;bottom:calc(30% + 115px)"></div>
 
-    <!-- Palms -->
-    <div class="palm" style="left:120px">
-      <div class="trunk"></div>
-      <div class="crown">
-        <div class="leaf l1"></div><div class="leaf l2"></div>
-        <div class="leaf l3"></div><div class="leaf l4"></div>
-        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
-        <div class="coco c1"></div><div class="coco c2"></div><div class="coco c3"></div>
-      </div>
-    </div>
-    <div class="palm" style="left:1150px">
-      <div class="trunk"></div>
-      <div class="crown">
-        <div class="leaf l1"></div><div class="leaf l2"></div>
-        <div class="leaf l3"></div><div class="leaf l4"></div>
-        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
-        <div class="coco c1"></div><div class="coco c2"></div>
-      </div>
-    </div>
-    <div class="palm" style="left:2250px">
-      <div class="trunk"></div>
-      <div class="crown">
-        <div class="leaf l1"></div><div class="leaf l2"></div>
-        <div class="leaf l3"></div><div class="leaf l4"></div>
-        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
-        <div class="coco c1"></div><div class="coco c2"></div><div class="coco c3"></div>
-      </div>
-    </div>
-    <div class="palm" style="left:3350px">
-      <div class="trunk"></div>
-      <div class="crown">
-        <div class="leaf l1"></div><div class="leaf l2"></div>
-        <div class="leaf l3"></div><div class="leaf l4"></div>
-        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
-        <div class="coco c1"></div>
-      </div>
-    </div>
+    <!-- Palms (single SVG each) -->
+    <template id="palmSvg">
+      <svg viewBox="0 0 200 260" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="trunkG" x1="0" x2="1">
+            <stop offset="0" stop-color="#4a2810"/>
+            <stop offset=".5" stop-color="#8b5a2b"/>
+            <stop offset="1" stop-color="#4a2810"/>
+          </linearGradient>
+          <linearGradient id="leafG" x1="0" x2="1">
+            <stop offset="0" stop-color="#0a6a26"/>
+            <stop offset=".55" stop-color="#1ec25b"/>
+            <stop offset="1" stop-color="#075418"/>
+          </linearGradient>
+        </defs>
+        <!-- curved trunk -->
+        <path d="M95 260 C 85 200, 115 160, 100 110 C 90 80, 110 60, 100 40"
+              stroke="url(#trunkG)" stroke-width="14" stroke-linecap="round" fill="none"/>
+        <!-- trunk segments / texture -->
+        <g stroke="#2a1608" stroke-width="1.2" stroke-linecap="round" fill="none" opacity=".55">
+          <path d="M88 250 q 7 -3 14 0"/>
+          <path d="M88 230 q 7 -3 14 0"/>
+          <path d="M88 210 q 7 -3 14 0"/>
+          <path d="M89 190 q 7 -3 14 0"/>
+          <path d="M91 170 q 7 -3 14 0"/>
+          <path d="M93 150 q 7 -3 14 0"/>
+          <path d="M95 130 q 7 -3 14 0"/>
+          <path d="M95 110 q 7 -3 14 0"/>
+          <path d="M97 90 q 7 -3 14 0"/>
+          <path d="M98 70 q 7 -3 14 0"/>
+          <path d="M99 55 q 7 -3 14 0"/>
+        </g>
+        <!-- coconuts under crown -->
+        <g fill="#5a3215" stroke="#2a1608" stroke-width="1">
+          <circle cx="88" cy="50" r="6"/>
+          <circle cx="104" cy="52" r="6"/>
+          <circle cx="96" cy="58" r="6"/>
+        </g>
+        <!-- leaves: long curved fronds, all rooted at top of trunk (100,40) -->
+        <g fill="url(#leafG)" stroke="#063d10" stroke-width=".8">
+          <!-- right side fronds -->
+          <path d="M100 40 Q 150 25 195 35 Q 145 38 100 45 Z"/>
+          <path d="M100 40 Q 145 55 190 75 Q 140 60 100 50 Z"/>
+          <path d="M100 40 Q 130 70 150 105 Q 120 70 100 50 Z"/>
+          <!-- left side fronds -->
+          <path d="M100 40 Q 50 25 5 35 Q 55 38 100 45 Z"/>
+          <path d="M100 40 Q 55 55 10 75 Q 60 60 100 50 Z"/>
+          <path d="M100 40 Q 70 70 50 105 Q 80 70 100 50 Z"/>
+          <!-- top fronds -->
+          <path d="M100 40 Q 80 10 60 0 Q 90 18 100 40 Z"/>
+          <path d="M100 40 Q 120 10 140 0 Q 110 18 100 40 Z"/>
+        </g>
+        <!-- frond midribs -->
+        <g stroke="#063d10" stroke-width="1.2" fill="none" opacity=".7">
+          <path d="M100 40 Q 150 28 195 35"/>
+          <path d="M100 40 Q 145 55 190 75"/>
+          <path d="M100 40 Q 130 70 150 105"/>
+          <path d="M100 40 Q 50 28 5 35"/>
+          <path d="M100 40 Q 55 55 10 75"/>
+          <path d="M100 40 Q 70 70 50 105"/>
+          <path d="M100 40 Q 80 10 60 0"/>
+          <path d="M100 40 Q 120 10 140 0"/>
+        </g>
+      </svg>
+    </template>
+    <div class="palm" style="left:80px"></div>
+    <div class="palm" style="left:1100px;transform:scaleX(-1)"></div>
+    <div class="palm" style="left:2200px"></div>
+    <div class="palm" style="left:3300px;transform:scaleX(-1)"></div>
 
     <!-- Anton -->
     <div class="char" id="anton" style="left:200px">
@@ -302,6 +319,12 @@
 
 <script>
 (() => {
+  // Inject palm SVG into each .palm container
+  const palmTpl = document.getElementById('palmSvg');
+  document.querySelectorAll('.palm').forEach(p => {
+    p.innerHTML = palmTpl.innerHTML;
+  });
+
   const world = document.getElementById('world');
   const scene = document.getElementById('scene');
   const anton = document.getElementById('anton');
