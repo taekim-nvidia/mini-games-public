@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>Anton & Shelley — Brazil 🇧🇷</title>
+<title>Anton & Shelley — Brasil 🇧🇷</title>
 <style>
   :root{
     --green:#009c3b;
@@ -14,118 +14,167 @@
     --sky:#7fd3ff;
   }
   *{box-sizing:border-box}
-  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;overflow:hidden;user-select:none}
-  body{
-    background:linear-gradient(#7fd3ff 0 55%, #1ea7c7 55% 70%, #f4d97a 70% 100%);
-  }
-  #hud{
-    position:fixed;top:10px;left:50%;transform:translateX(-50%);
-    background:rgba(0,0,0,.45);padding:8px 14px;border-radius:12px;
-    font-size:14px;display:flex;gap:14px;align-items:center;z-index:5
-  }
-  #hud .flag{width:22px;height:15px;background:var(--green);position:relative;border-radius:2px;overflow:hidden;display:inline-block;vertical-align:middle}
-  #hud .flag::before{content:"";position:absolute;top:50%;left:50%;width:14px;height:9px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg);}
-  #hud .flag::after{content:"";position:absolute;top:50%;left:50%;width:5px;height:5px;background:var(--blue);border-radius:50%;transform:translate(-50%,-50%);}
+  html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#fff;overflow:hidden;user-select:none;-webkit-user-select:none;touch-action:manipulation}
+  body{background:linear-gradient(#7fd3ff 0 50%, #1ea7c7 50% 68%, #f4d97a 68% 100%);}
+  #hud{position:fixed;top:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.45);padding:8px 14px;border-radius:12px;font-size:14px;display:flex;gap:10px;align-items:center;z-index:5}
+  #hud .flag{width:22px;height:15px;display:inline-block;vertical-align:middle;background:var(--green);position:relative;border-radius:2px;overflow:hidden}
+  #hud .flag::before{content:"";position:absolute;top:50%;left:50%;width:16px;height:10px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg)}
+  #hud .flag::after{content:"";position:absolute;top:50%;left:50%;width:6px;height:6px;background:var(--blue);border-radius:50%;transform:translate(-50%,-50%)}
   #hearts{position:fixed;top:10px;right:10px;background:rgba(0,0,0,.45);padding:6px 12px;border-radius:12px;font-size:14px;z-index:5}
   #scene{position:fixed;inset:0;overflow:hidden}
   .world{position:absolute;inset:0;will-change:transform}
-  .sun{position:absolute;left:8%;top:6%;width:80px;height:80px;border-radius:50%;background:radial-gradient(circle,#fff7c2,#ffd34d);box-shadow:0 0 40px #ffd34d}
-  .palm{position:absolute;bottom:18%;width:90px;height:160px}
-  .palm .trunk{position:absolute;bottom:0;left:50%;transform:translateX(-50%);width:14px;height:110px;background:linear-gradient(#6b3a17,#8b4f22);border-radius:6px}
-  .palm .leaf{position:absolute;top:0;left:50%;width:80px;height:30px;background:#0a8a3a;border-radius:50%;transform-origin:left center}
-  .palm .l1{transform:translate(-5%,0) rotate(-30deg)}
-  .palm .l2{transform:translate(-5%,0) rotate(30deg)}
-  .palm .l3{transform:translate(-95%,0) rotate(-150deg)}
-  .palm .l4{transform:translate(-95%,0) rotate(150deg)}
-  .palm .l5{transform:translate(-50%,-10px) rotate(0deg)}
 
-  .bigflag{position:absolute;width:160px;height:110px;background:var(--green);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.3)}
-  .bigflag::before{content:"";position:absolute;top:50%;left:50%;width:120px;height:70px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg);border-radius:6px}
-  .bigflag::after{content:"BRASIL";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:55px;height:55px;background:var(--blue);border-radius:50%;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:1px}
-  .pole{position:absolute;width:6px;background:#bbb;border-radius:3px}
+  .sun{position:absolute;left:6%;top:5%;width:90px;height:90px;border-radius:50%;background:radial-gradient(circle,#fff7c2 0%,#ffd34d 60%,rgba(255,211,77,0) 75%);box-shadow:0 0 60px #ffd34d}
+  .cloud{position:absolute;background:#fff;border-radius:50px;opacity:.85}
+  .cloud::before,.cloud::after{content:"";position:absolute;background:#fff;border-radius:50%}
 
-  .mountain{position:absolute;bottom:30%;width:300px;height:160px;background:linear-gradient(#2a7a3a,#0a5a22);clip-path:polygon(0% 100%,15% 60%,30% 80%,50% 30%,70% 70%,85% 50%,100% 100%);}
-  .stadium{position:absolute;bottom:30%;width:180px;height:80px;background:#ddd;border-radius:50% 50% 10px 10px / 80% 80% 10px 10px;box-shadow:0 8px 16px rgba(0,0,0,.25)}
-  .stadium::after{content:"⚽";position:absolute;top:-30px;left:50%;transform:translateX(-50%);font-size:28px}
+  /* Palms — curved trunk via SVG-like layering */
+  .palm{position:absolute;bottom:18%;width:120px;height:200px;transform-origin:bottom center}
+  .palm .trunk{position:absolute;bottom:0;left:50%;width:18px;height:150px;background:linear-gradient(90deg,#5a3215,#8b5a2b,#5a3215);border-radius:9px;transform:translateX(-50%) rotate(-6deg);transform-origin:bottom center;box-shadow:inset -3px 0 0 rgba(0,0,0,.25)}
+  .palm .trunk::before{content:"";position:absolute;inset:0;background:repeating-linear-gradient(0deg,transparent 0 14px,rgba(0,0,0,.25) 14px 16px);border-radius:9px}
+  .palm .crown{position:absolute;top:6px;left:50%;width:0;height:0;transform:translateX(-50%)}
+  .palm .leaf{position:absolute;width:80px;height:22px;background:linear-gradient(90deg,#0a7a30,#1ec25b,#0a7a30);border-radius:50% 50% 50% 50% / 80% 80% 80% 80%;transform-origin:0% 50%;box-shadow:inset 0 -3px 0 rgba(0,0,0,.2)}
+  .palm .leaf::before{content:"";position:absolute;left:0;top:50%;width:100%;height:2px;background:rgba(0,0,0,.35);transform:translateY(-50%)}
+  .palm .leaf.l1{transform:rotate(20deg)}
+  .palm .leaf.l2{transform:rotate(-20deg)}
+  .palm .leaf.l3{transform:rotate(60deg) scale(.95)}
+  .palm .leaf.l4{transform:rotate(-60deg) scale(.95)}
+  .palm .leaf.l5{transform:rotate(180deg) scaleX(-1)}
+  .palm .leaf.l6{transform:rotate(160deg) scaleX(-1) scale(.95)}
+  .palm .leaf.l7{transform:rotate(-160deg) scaleX(-1) scale(.95)}
+  .palm .coco{position:absolute;top:0;left:50%;width:10px;height:10px;background:#5a3215;border-radius:50%}
+  .palm .coco.c1{transform:translate(-12px,2px)}
+  .palm .coco.c2{transform:translate(2px,2px)}
+  .palm .coco.c3{transform:translate(-5px,8px)}
 
-  /* Characters */
-  .char{position:absolute;bottom:5%;width:70px;height:120px;transition:transform .15s}
-  .char .head{position:absolute;top:0;left:50%;width:34px;height:34px;border-radius:50%;background:#f3c9a0;transform:translateX(-50%);box-shadow:inset -4px -4px 0 rgba(0,0,0,.08)}
-  .char .hair{position:absolute;top:-4px;left:50%;width:38px;height:22px;border-radius:50% 50% 30% 30%;transform:translateX(-50%)}
-  .char .body{position:absolute;top:30px;left:50%;width:46px;height:46px;background:var(--green);border-radius:10px 10px 8px 8px;transform:translateX(-50%);overflow:hidden;border:2px solid #007a2d}
-  .char .body::before{content:"";position:absolute;top:50%;left:50%;width:34px;height:22px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg);border-radius:4px}
-  .char .body::after{content:"";position:absolute;top:50%;left:50%;width:14px;height:14px;background:var(--blue);border-radius:50%;transform:translate(-50%,-50%)}
-  .char .arm{position:absolute;top:34px;width:10px;height:34px;background:#f3c9a0;border-radius:6px;transition:transform .2s}
-  .char .arm.l{left:6px;transform-origin:top center;transform:rotate(15deg)}
-  .char .arm.r{right:6px;transform-origin:top center;transform:rotate(-15deg)}
-  .char .leg{position:absolute;bottom:0;width:12px;height:30px;background:#1d3a8a;border-radius:4px}
-  .char .leg.l{left:18px}
-  .char .leg.r{right:18px}
-  .char .shoe{position:absolute;bottom:-4px;width:18px;height:8px;background:#222;border-radius:4px}
-  .char .shoe.l{left:15px}
-  .char .shoe.r{right:15px}
+  .bigflag{position:absolute;width:160px;height:110px;background:var(--green);border-radius:6px;box-shadow:0 6px 20px rgba(0,0,0,.3);overflow:hidden}
+  .bigflag::before{content:"";position:absolute;top:50%;left:50%;width:120px;height:70px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg)}
+  .bigflag::after{content:"BRASIL";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:55px;height:55px;background:var(--blue);border-radius:50%;color:#fff;font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;letter-spacing:1px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.3)}
+  .pole{position:absolute;width:6px;background:linear-gradient(90deg,#888,#ddd,#888);border-radius:3px}
 
-  #anton .hair{background:#3a2a1a}
-  #shelley .hair{background:#6b3a17;width:42px;height:34px;border-radius:50% 50% 40% 40%;top:-6px}
-  #shelley .head{background:#fbd4b4}
-  #shelley .body{border-color:#007a2d}
-  #shelley .lips{position:absolute;top:22px;left:50%;width:6px;height:3px;background:#c0392b;border-radius:50%;transform:translateX(-50%)}
+  .mountain{position:absolute;bottom:30%;width:340px;height:170px;background:linear-gradient(#2a7a3a,#0a5a22);clip-path:polygon(0% 100%,12% 55%,28% 80%,48% 25%,68% 70%,84% 45%,100% 100%);box-shadow:inset 0 -20px 30px rgba(0,0,0,.25)}
+  .mountain::after{content:"";position:absolute;left:46%;top:18%;width:8px;height:18px;background:#fff;border-radius:2px;box-shadow:0 -6px 0 #fff}
 
-  .walk #anton{animation:bob .35s infinite}
-  .walk #anton .leg.l{animation:legA .35s infinite}
-  .walk #anton .leg.r{animation:legB .35s infinite}
-  @keyframes bob{50%{transform:translateY(-2px)}}
+  .stadium{position:absolute;bottom:30%;width:180px;height:70px;background:linear-gradient(#eee,#bbb);border-radius:50% 50% 8px 8px / 70% 70% 8px 8px;box-shadow:0 8px 16px rgba(0,0,0,.25)}
+  .stadium::before{content:"";position:absolute;inset:8px 8px auto 8px;height:20px;background:repeating-linear-gradient(90deg,#fff 0 8px,#888 8px 10px);border-radius:50% 50% 0 0 / 100% 100% 0 0}
+  .stadium::after{content:"⚽";position:absolute;top:-32px;left:50%;transform:translateX(-50%);font-size:30px;filter:drop-shadow(0 2px 2px rgba(0,0,0,.3))}
+
+  /* CHARACTERS */
+  .char{position:absolute;bottom:5%;width:80px;height:140px;transition:transform .25s ease, left .25s ease}
+
+  .char .head{position:absolute;top:0;left:50%;width:42px;height:46px;border-radius:50% 50% 45% 45%/55% 55% 45% 45%;background:#f3c9a0;transform:translateX(-50%);box-shadow:inset -3px -4px 0 rgba(0,0,0,.06)}
+  .char .ear{position:absolute;top:46px;width:8px;height:12px;background:#f3c9a0;border-radius:50%}
+  .char .ear.l{left:14px}
+  .char .ear.r{right:14px}
+
+  /* Hair */
+  #anton .hair{position:absolute;top:-2px;left:50%;width:46px;height:26px;background:#2b1a0c;border-radius:50% 50% 30% 30%;transform:translateX(-50%);box-shadow:-2px 12px 0 -2px #2b1a0c, 2px 12px 0 -2px #2b1a0c}
+  #shelley .hair{position:absolute;top:-6px;left:50%;width:52px;height:60px;background:#7a3d12;border-radius:50% 50% 40% 40% / 50% 50% 80% 80%;transform:translateX(-50%);z-index:0}
+  #shelley .hair::before{content:"";position:absolute;left:-6px;top:22px;width:14px;height:42px;background:#7a3d12;border-radius:40% 60% 60% 40%/60%}
+  #shelley .hair::after{content:"";position:absolute;right:-6px;top:22px;width:14px;height:42px;background:#7a3d12;border-radius:60% 40% 40% 60%/60%}
+  #shelley .head{background:#fbd4b4;z-index:1}
+
+  /* Face features */
+  .char .face{position:absolute;top:14px;left:50%;width:42px;height:30px;transform:translateX(-50%);z-index:2}
+  .char .brow{position:absolute;top:0;width:8px;height:2px;background:#2b1a0c;border-radius:2px}
+  .char .brow.l{left:6px;transform:rotate(-6deg)}
+  .char .brow.r{right:6px;transform:rotate(6deg)}
+  .char .eye{position:absolute;top:6px;width:6px;height:8px;background:#fff;border-radius:50%;overflow:hidden;box-shadow:inset 0 0 0 1px #333}
+  .char .eye.l{left:7px}
+  .char .eye.r{right:7px}
+  .char .eye::before{content:"";position:absolute;top:2px;left:1px;width:4px;height:5px;background:#3a6ea5;border-radius:50%}
+  .char .eye::after{content:"";position:absolute;top:3px;left:2px;width:1.5px;height:1.5px;background:#fff;border-radius:50%}
+  #shelley .eye::before{background:#3b7a3b}
+  .char .nose{position:absolute;top:14px;left:50%;width:3px;height:5px;background:rgba(0,0,0,.15);border-radius:50%;transform:translateX(-50%)}
+  .char .mouth{position:absolute;top:22px;left:50%;width:10px;height:3px;background:#c0392b;border-radius:0 0 8px 8px;transform:translateX(-50%)}
+  #shelley .mouth{background:#d04060;width:12px;height:5px;border-radius:0 0 10px 10px}
+  #shelley .cheek{position:absolute;top:18px;width:5px;height:4px;background:rgba(220,80,100,.4);border-radius:50%;z-index:3}
+  #shelley .cheek.l{left:6px}
+  #shelley .cheek.r{right:6px}
+
+  /* Body (Brazil jersey) */
+  .char .body{position:absolute;top:46px;left:50%;width:54px;height:50px;background:var(--green);border-radius:14px 14px 10px 10px;transform:translateX(-50%);overflow:hidden;border:2px solid #007a2d;z-index:0}
+  .char .body::before{content:"";position:absolute;top:50%;left:50%;width:40px;height:26px;background:var(--yellow);transform:translate(-50%,-50%) rotate(45deg);border-radius:4px}
+  .char .body::after{content:"";position:absolute;top:50%;left:50%;width:18px;height:18px;background:var(--blue);border-radius:50%;transform:translate(-50%,-50%);box-shadow:inset 0 0 0 1px rgba(255,255,255,.5)}
+  .char .neck{position:absolute;top:42px;left:50%;width:14px;height:8px;background:#f3c9a0;transform:translateX(-50%);z-index:-1}
+  #shelley .neck{background:#fbd4b4}
+
+  /* Arms */
+  .char .arm{position:absolute;top:50px;width:12px;height:38px;background:#f3c9a0;border-radius:6px;transition:transform .25s ease;z-index:1}
+  #shelley .arm{background:#fbd4b4}
+  .char .arm.l{left:6px;transform-origin:top center;transform:rotate(12deg)}
+  .char .arm.r{right:6px;transform-origin:top center;transform:rotate(-12deg)}
+  .char .hand{position:absolute;bottom:-4px;left:50%;width:10px;height:10px;background:inherit;border-radius:50%;transform:translateX(-50%)}
+
+  /* Legs */
+  .char .leg{position:absolute;bottom:0;width:14px;height:34px;background:#1d3a8a;border-radius:4px;transition:transform .15s ease;transform-origin:top center}
+  .char .leg.l{left:22px}
+  .char .leg.r{right:22px}
+  #shelley .leg{background:#7a3d12}
+  .char .shoe{position:absolute;bottom:-4px;width:20px;height:8px;background:#222;border-radius:4px}
+  .char .shoe.l{left:19px}
+  .char .shoe.r{right:19px}
+
+  /* Walking */
+  .walk #anton{animation:bob .3s infinite}
+  .walk #anton .leg.l{animation:legA .3s infinite}
+  .walk #anton .leg.r{animation:legB .3s infinite}
+  .walk.holding #shelley{animation:bob .3s infinite}
+  .walk.holding #shelley .leg.l{animation:legA .3s infinite}
+  .walk.holding #shelley .leg.r{animation:legB .3s infinite}
+  @keyframes bob{50%{transform:translateY(-3px)}}
   @keyframes legA{0%,100%{transform:rotate(15deg)}50%{transform:rotate(-15deg)}}
   @keyframes legB{0%,100%{transform:rotate(-15deg)}50%{transform:rotate(15deg)}}
 
-  /* States */
-  .holding #shelley{transform:translateX(-46px)}
-  .holding #shelley .arm.r{transform:rotate(70deg)}
-  .holding #anton .arm.l{transform:rotate(-70deg)}
+  /* Holding hand: stay separate, just stretch inner arms */
+  .holding #anton .arm.r{transform:rotate(75deg)}
+  .holding #shelley .arm.l{transform:rotate(-75deg)}
+  /* small heart between them */
+  .holding #shelley::before{content:"💗";position:absolute;top:60px;left:-12px;font-size:14px;animation:pulse 1s infinite}
+  @keyframes pulse{50%{transform:scale(1.2)}}
 
-  .hugging #shelley{transform:translateX(-30px) scale(.98)}
-  .hugging #anton .arm.l{transform:rotate(-110deg)}
-  .hugging #anton .arm.r{transform:rotate(-60deg)}
-  .hugging #shelley .arm.l{transform:rotate(110deg)}
-  .hugging #shelley .arm.r{transform:rotate(60deg)}
+  /* Hug */
+  .hugging #anton .arm.l{transform:rotate(-100deg)}
+  .hugging #anton .arm.r{transform:rotate(-50deg)}
+  .hugging #shelley .arm.l{transform:rotate(50deg)}
+  .hugging #shelley .arm.r{transform:rotate(100deg)}
 
-  .kissing #shelley{transform:translateX(-44px)}
-  .kissing #anton{transform:translateX(2px)}
-  .kissing #shelley::after,
-  .kissing #anton::after{content:"💋";position:absolute;top:14px;left:60%;font-size:18px;animation:pop .6s ease-out}
-  @keyframes pop{from{transform:translateY(0) scale(.6);opacity:0}to{transform:translateY(-20px) scale(1.4);opacity:0}}
+  /* Kiss */
+  .kissing #anton .head{transform:translateX(-50%) rotate(8deg)}
+  .kissing #shelley .head{transform:translateX(-50%) rotate(-8deg)}
+  .kissing #anton .mouth, .kissing #shelley .mouth{width:6px;height:6px;border-radius:50%;background:#c0392b}
 
-  .carrying #shelley{transform:translate(-10px,-50px) rotate(-12deg)}
-  .carrying #shelley .leg.l, .carrying #shelley .leg.r{transform:rotate(70deg) translateX(6px)}
-  .carrying #anton .arm.l{transform:rotate(-90deg)}
-  .carrying #anton .arm.r{transform:rotate(-100deg)}
+  /* Carrying */
+  .carrying #shelley{transform:translate(-40px,-50px) rotate(-8deg)}
+  .carrying #shelley .leg{transform:rotate(60deg) translate(2px,-2px)}
+  .carrying #anton .arm.l{transform:rotate(-95deg)}
+  .carrying #anton .arm.r{transform:rotate(-105deg)}
 
   /* Floating hearts */
-  .heart{position:fixed;font-size:24px;pointer-events:none;animation:float 1.6s ease-out forwards;z-index:6}
+  .heart{position:fixed;font-size:28px;pointer-events:none;animation:float 1.8s ease-out forwards;z-index:6}
   @keyframes float{
     from{transform:translateY(0) scale(.6);opacity:1}
-    to{transform:translateY(-120px) scale(1.5);opacity:0}
+    to{transform:translateY(-140px) scale(1.6);opacity:0}
   }
 
-  /* Mobile controls */
-  #controls{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:10px;flex-wrap:wrap;justify-content:center;z-index:5;max-width:96vw}
-  .btn{background:rgba(0,0,0,.55);color:#fff;border:none;padding:10px 14px;border-radius:14px;font-size:14px;cursor:pointer;backdrop-filter:blur(4px)}
-  .btn:active{transform:scale(.95)}
+  /* Controls */
+  #controls{position:fixed;bottom:14px;left:50%;transform:translateX(-50%);display:flex;gap:8px;flex-wrap:wrap;justify-content:center;z-index:5;max-width:96vw}
+  .btn{background:rgba(0,0,0,.6);color:#fff;border:none;padding:10px 14px;border-radius:14px;font-size:14px;cursor:pointer;backdrop-filter:blur(4px);font-weight:600}
+  .btn:active{transform:scale(.94)}
   .btn.dir{font-size:22px;width:54px;height:54px;display:flex;align-items:center;justify-content:center}
-  .row{display:flex;gap:8px;align-items:center}
-  #help{position:fixed;bottom:90px;left:10px;font-size:11px;opacity:.8;background:rgba(0,0,0,.4);padding:6px 10px;border-radius:10px;z-index:5;max-width:200px}
+  .btn.active{background:rgba(220,40,80,.85)}
 
-  /* Distant figure when not near */
-  .far #shelley{filter:none}
-  .prompt{position:absolute;top:-26px;left:50%;transform:translateX(-50%);background:#fff;color:#222;padding:3px 8px;border-radius:10px;font-size:11px;font-weight:600;white-space:nowrap;animation:bounce 1s infinite}
+  .prompt{position:absolute;top:-28px;left:50%;transform:translateX(-50%);background:#fff;color:#222;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap;animation:bounce 1s infinite;box-shadow:0 2px 6px rgba(0,0,0,.2)}
   @keyframes bounce{50%{transform:translateX(-50%) translateY(-4px)}}
+
+  #help{position:fixed;bottom:80px;left:10px;font-size:11px;opacity:.85;background:rgba(0,0,0,.4);padding:6px 10px;border-radius:10px;z-index:5;max-width:220px}
 </style>
 </head>
 <body>
 
 <div id="hud">
   <span class="flag"></span>
-  <strong>Anton & Shelley in Brasil</strong>
+  <strong>Anton ❤️ Shelley · Brasil</strong>
   <span class="flag"></span>
 </div>
 <div id="hearts">❤️ <span id="heartCount">0</span></div>
@@ -134,48 +183,103 @@
   <div class="world" id="world">
     <div class="sun"></div>
 
-    <!-- Background layer (mountains, stadium) -->
+    <div class="cloud" style="left:300px;top:80px;width:100px;height:24px">
+      <span style="position:absolute;left:10px;top:-14px;width:40px;height:40px"></span>
+    </div>
+    <div class="cloud" style="left:1400px;top:50px;width:120px;height:28px"></div>
+    <div class="cloud" style="left:2600px;top:90px;width:90px;height:22px"></div>
+
+    <!-- Mountains / stadium -->
     <div class="mountain" style="left:200px"></div>
-    <div class="mountain" style="left:1400px;transform:scaleX(-1)"></div>
-    <div class="stadium" style="left:800px"></div>
-    <div class="stadium" style="left:2400px"></div>
+    <div class="mountain" style="left:1500px;transform:scaleX(-1)"></div>
+    <div class="stadium" style="left:850px"></div>
+    <div class="stadium" style="left:2500px"></div>
 
-    <!-- Flags on poles -->
-    <div class="pole" style="left:500px;bottom:30%;height:220px"></div>
-    <div class="bigflag" style="left:504px;bottom:calc(30% + 110px)"></div>
+    <!-- Flagpoles -->
+    <div class="pole" style="left:520px;bottom:30%;height:230px"></div>
+    <div class="bigflag" style="left:524px;bottom:calc(30% + 115px)"></div>
 
-    <div class="pole" style="left:1800px;bottom:30%;height:220px"></div>
-    <div class="bigflag" style="left:1804px;bottom:calc(30% + 110px)"></div>
+    <div class="pole" style="left:1820px;bottom:30%;height:230px"></div>
+    <div class="bigflag" style="left:1824px;bottom:calc(30% + 115px)"></div>
 
-    <div class="pole" style="left:3000px;bottom:30%;height:220px"></div>
-    <div class="bigflag" style="left:3004px;bottom:calc(30% + 110px)"></div>
+    <div class="pole" style="left:3100px;bottom:30%;height:230px"></div>
+    <div class="bigflag" style="left:3104px;bottom:calc(30% + 115px)"></div>
 
     <!-- Palms -->
-    <div class="palm" style="left:100px"><div class="trunk"></div><div class="leaf l1"></div><div class="leaf l2"></div><div class="leaf l3"></div><div class="leaf l4"></div><div class="leaf l5"></div></div>
-    <div class="palm" style="left:1100px"><div class="trunk"></div><div class="leaf l1"></div><div class="leaf l2"></div><div class="leaf l3"></div><div class="leaf l4"></div><div class="leaf l5"></div></div>
-    <div class="palm" style="left:2200px"><div class="trunk"></div><div class="leaf l1"></div><div class="leaf l2"></div><div class="leaf l3"></div><div class="leaf l4"></div><div class="leaf l5"></div></div>
-    <div class="palm" style="left:3300px"><div class="trunk"></div><div class="leaf l1"></div><div class="leaf l2"></div><div class="leaf l3"></div><div class="leaf l4"></div><div class="leaf l5"></div></div>
+    <div class="palm" style="left:120px">
+      <div class="trunk"></div>
+      <div class="crown">
+        <div class="leaf l1"></div><div class="leaf l2"></div>
+        <div class="leaf l3"></div><div class="leaf l4"></div>
+        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
+        <div class="coco c1"></div><div class="coco c2"></div><div class="coco c3"></div>
+      </div>
+    </div>
+    <div class="palm" style="left:1150px">
+      <div class="trunk"></div>
+      <div class="crown">
+        <div class="leaf l1"></div><div class="leaf l2"></div>
+        <div class="leaf l3"></div><div class="leaf l4"></div>
+        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
+        <div class="coco c1"></div><div class="coco c2"></div>
+      </div>
+    </div>
+    <div class="palm" style="left:2250px">
+      <div class="trunk"></div>
+      <div class="crown">
+        <div class="leaf l1"></div><div class="leaf l2"></div>
+        <div class="leaf l3"></div><div class="leaf l4"></div>
+        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
+        <div class="coco c1"></div><div class="coco c2"></div><div class="coco c3"></div>
+      </div>
+    </div>
+    <div class="palm" style="left:3350px">
+      <div class="trunk"></div>
+      <div class="crown">
+        <div class="leaf l1"></div><div class="leaf l2"></div>
+        <div class="leaf l3"></div><div class="leaf l4"></div>
+        <div class="leaf l5"></div><div class="leaf l6"></div><div class="leaf l7"></div>
+        <div class="coco c1"></div>
+      </div>
+    </div>
 
-    <!-- Characters -->
+    <!-- Anton -->
     <div class="char" id="anton" style="left:200px">
       <div class="hair"></div>
       <div class="head"></div>
+      <div class="ear l"></div><div class="ear r"></div>
+      <div class="face">
+        <div class="brow l"></div><div class="brow r"></div>
+        <div class="eye l"></div><div class="eye r"></div>
+        <div class="nose"></div>
+        <div class="mouth"></div>
+      </div>
+      <div class="neck"></div>
       <div class="body"></div>
-      <div class="arm l"></div>
-      <div class="arm r"></div>
+      <div class="arm l"><div class="hand"></div></div>
+      <div class="arm r"><div class="hand"></div></div>
       <div class="leg l"></div>
       <div class="leg r"></div>
       <div class="shoe l"></div>
       <div class="shoe r"></div>
     </div>
 
+    <!-- Shelley -->
     <div class="char" id="shelley" style="left:1500px">
       <div class="hair"></div>
       <div class="head"></div>
-      <div class="lips"></div>
+      <div class="ear l"></div><div class="ear r"></div>
+      <div class="face">
+        <div class="brow l"></div><div class="brow r"></div>
+        <div class="eye l"></div><div class="eye r"></div>
+        <div class="nose"></div>
+        <div class="cheek l"></div><div class="cheek r"></div>
+        <div class="mouth"></div>
+      </div>
+      <div class="neck"></div>
       <div class="body"></div>
-      <div class="arm l"></div>
-      <div class="arm r"></div>
+      <div class="arm l"><div class="hand"></div></div>
+      <div class="arm r"><div class="hand"></div></div>
       <div class="leg l"></div>
       <div class="leg r"></div>
       <div class="shoe l"></div>
@@ -185,7 +289,7 @@
   </div>
 </div>
 
-<div id="help">← → или A/D — ходить. Кнопки ниже — взаимодействия (когда Shelley рядом).</div>
+<div id="help">← → или A/D — идти. Подойди к Shelley и тапни действие.<br>Esc — отпустить.</div>
 
 <div id="controls">
   <button class="btn dir" id="left">◀</button>
@@ -204,18 +308,24 @@
   const shelley = document.getElementById('shelley');
   const prompt = document.getElementById('prompt');
   const heartCountEl = document.getElementById('heartCount');
+  const handBtn = document.getElementById('hand');
+  const carryBtn = document.getElementById('carry');
 
   let antonX = 200;
   let shelleyX = 1500;
   const worldW = 3600;
-  let dir = 0; // -1,0,1
+  const HOLDING_GAP = 70;  // visual gap when holding hands — they stay APART
+  const CARRY_OFFSET = 40;
+  let dir = 0;
   let hearts = 0;
-  let state = null; // 'holding'|'hugging'|'kissing'|'carrying'
+  let state = null;
 
   function setState(s){
     ['holding','hugging','kissing','carrying'].forEach(c=>scene.classList.remove(c));
     state = s;
     if(s) scene.classList.add(s);
+    handBtn.classList.toggle('active', s === 'holding');
+    carryBtn.classList.toggle('active', s === 'carrying');
   }
 
   function addHeart(emoji='❤️'){
@@ -224,53 +334,57 @@
     const h = document.createElement('div');
     h.className = 'heart';
     h.textContent = emoji;
-    h.style.left = (window.innerWidth/2 - 20 + (Math.random()*40-20)) + 'px';
+    h.style.left = (window.innerWidth/2 - 20 + (Math.random()*60-30)) + 'px';
     h.style.top = (window.innerHeight/2 - 40) + 'px';
     document.body.appendChild(h);
-    setTimeout(()=>h.remove(), 1600);
+    setTimeout(()=>h.remove(), 1800);
   }
 
-  function near(){ return Math.abs(antonX - shelleyX) < 90; }
+  function near(){ return Math.abs(antonX - shelleyX) < 110; }
 
   function update(){
-    // movement
-    if(dir !== 0 && !state){
-      antonX += dir * 4;
-      antonX = Math.max(40, Math.min(worldW-100, antonX));
-      scene.classList.add('walk');
-    } else {
-      scene.classList.remove('walk');
+    const moving = dir !== 0;
+
+    if(!state){
+      if(moving){
+        antonX += dir * 4;
+      }
+    } else if(state === 'holding'){
+      if(moving){
+        antonX += dir * 3.2;
+      }
+      shelleyX = antonX + HOLDING_GAP;
+    } else if(state === 'carrying'){
+      if(moving){
+        antonX += dir * 2.8;
+      }
+      shelleyX = antonX + CARRY_OFFSET;
     }
 
-    // when holding/carrying — shelley follows anton
-    if(state === 'holding' || state === 'carrying'){
-      shelleyX = antonX + 50;
-      if(dir !== 0){
-        antonX += dir * 3;
-        antonX = Math.max(40, Math.min(worldW-100, antonX));
-        shelleyX = antonX + 50;
-        scene.classList.add('walk');
-      }
-    }
+    antonX = Math.max(40, Math.min(worldW-100, antonX));
+    if(state === 'holding') shelleyX = Math.min(worldW-50, antonX + HOLDING_GAP);
+    if(state === 'carrying') shelleyX = antonX + CARRY_OFFSET;
+
+    scene.classList.toggle('walk', moving && (state === null || state === 'holding'));
 
     anton.style.left = antonX + 'px';
     shelley.style.left = shelleyX + 'px';
 
-    // flip when walking left
-    anton.style.transform = (dir < 0 ? 'scaleX(-1)' : 'scaleX(1)');
+    // flip direction
+    if(dir < 0 && !state) anton.style.transform = 'scaleX(-1)';
+    else if(dir > 0 && !state) anton.style.transform = 'scaleX(1)';
 
     // camera follow
-    const camX = Math.max(0, Math.min(worldW - window.innerWidth, antonX - window.innerWidth/2 + 35));
-    world.style.transform = `translateX(${-camX}px)`;
+    const targetCam = Math.max(0, Math.min(worldW - window.innerWidth, antonX - window.innerWidth/2 + 35));
+    world.style.transform = `translateX(${-targetCam}px)`;
 
-    // prompt visibility
     prompt.style.opacity = (near() && !state) ? 1 : 0;
 
     requestAnimationFrame(update);
   }
   update();
 
-  // Controls
+  // Keyboard
   const keys = {};
   window.addEventListener('keydown', e=>{
     keys[e.key.toLowerCase()] = true;
@@ -289,18 +403,20 @@
 
   function holdBtn(id, d){
     const el = document.getElementById(id);
-    const on = ()=>{ dir = d; };
+    const on = e=>{ e && e.preventDefault && e.preventDefault(); dir = d; };
     const off = ()=>{ dir = 0; };
-    el.addEventListener('mousedown', on); el.addEventListener('mouseup', off); el.addEventListener('mouseleave', off);
-    el.addEventListener('touchstart', e=>{e.preventDefault();on();}, {passive:false});
+    el.addEventListener('mousedown', on);
+    el.addEventListener('mouseup', off);
+    el.addEventListener('mouseleave', off);
+    el.addEventListener('touchstart', on, {passive:false});
     el.addEventListener('touchend', off);
+    el.addEventListener('touchcancel', off);
   }
   holdBtn('left', -1);
   holdBtn('right', 1);
 
   function action(name, emoji, duration){
     if(!near()){
-      // little shake / hint
       prompt.textContent = 'Сначала подойди! 👉';
       prompt.style.opacity = 1;
       setTimeout(()=>{ prompt.textContent='Подойди ко мне 💕'; }, 1200);
@@ -315,13 +431,13 @@
     }
   }
 
-  document.getElementById('hand').onclick = ()=>{
+  handBtn.onclick = ()=>{
     if(state === 'holding'){ setState(null); return; }
-    action('holding','🤝');
+    action('holding','💗');
   };
-  document.getElementById('hug').onclick = ()=> action('hugging','🤗', 1500);
-  document.getElementById('kiss').onclick = ()=> action('kissing','💋', 1200);
-  document.getElementById('carry').onclick = ()=>{
+  document.getElementById('hug').onclick = ()=> action('hugging','🤗', 1600);
+  document.getElementById('kiss').onclick = ()=> action('kissing','💋', 1300);
+  carryBtn.onclick = ()=>{
     if(state === 'carrying'){ setState(null); return; }
     action('carrying','💖');
   };
